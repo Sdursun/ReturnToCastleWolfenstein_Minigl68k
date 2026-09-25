@@ -1,0 +1,44 @@
+Return to Castle Wolfenstein - tek oyunculu, AmigaOS 3.x / PiStorm3D
+====================================================================
+
+Gerekenler
+----------
+- AmigaOS 3.x, FPU'lu 68040 veya ustu (Emu68 uygundur)
+- RTG (Picasso96 veya CyberGraphX)
+- LIBS: icinde minigl.library (PiStorm3D'den; bu pakette yok)
+- Ses icin AHI
+- Bol Fast RAM (program tek basina ~25 MB, oyun verisi de bir o kadar)
+
+Kurulum
+-------
+1. 1.41 yamali PC kurulumunun main/ klasorunu bir yere kopyalayin,
+   ornegin Games:RTCW/main (en az pak0.pk3, sp_pak1.pk3, sp_pak2.pk3,
+   sp_pak3.pk3).
+2. rtcw-sp dosyasini Games:RTCW icine, bu paketteki main/amiga.cfg
+   dosyasini Games:RTCW/main icine kopyalayin.
+3. Shell'den calistirin:
+     cd Games:RTCW
+     rtcw-sp +exec amiga.cfg
+   Dogrudan bolum acmak icin: rtcw-sp +exec amiga.cfg +devmap escape1
+
+Ayarlarin kalici olmasi icin main/autoexec.cfg dosyasina (yoksa olusturun)
+"exec amiga.cfg" satirini ekleyin.
+
+Notlar
+------
+- Oyun icinde konsol komutlarinin basina / yazin (/god, /cg_drawFPS 1).
+  / olmadan yazilan satir sohbet mesaji olarak gider. Hileler icin bolum
+  +devmap ile acilmalidir.
+- Ses: Paula sorunsuz. PiStorm'da ses karti uzerinden AHI oyunu belirgin
+  yavaslatir (~40 -> 24 FPS). AHI Prefs'te Paula modu secin, ornegin
+  "Paula: HiFi 14 bit stereo++".
+- Acilista MiniGL'in "stack kucuk" uyarisi Shell ayarina bakar; oyun kendi
+  2 MB stack'ine gectigi icin gormezden gelinebilir.
+- pk3 dosyalari PFS3 veya SFS bolumundeyken yukleme muhtemelen daha hizli
+  olur (olculmedi); FFS buyuk pak0.pk3 icinde atlamada yavastir.
+- 640x480 en hizli moddur; dusuk cozunurluk (320x240) daha yavastir.
+- r_vertexlight 1 yaklasik 10 FPS kazandirir, isiklandirma daha duz olur
+  (amiga.cfg bunu acar).
+- Pencere modunda fare imleci gosterilmez.
+
+Ayrintilar ve diger ayarlar icin README.txt'ye bakin.

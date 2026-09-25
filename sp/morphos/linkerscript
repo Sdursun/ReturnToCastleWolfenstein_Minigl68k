@@ -1,0 +1,32 @@
+SECTIONS
+{
+	.sbss :
+	{
+		rtcw_so_sbss_segment_start = 0;
+		*(.sbss)
+		rtcw_so_sbss_segment_end = .;
+	}
+
+	.bss :
+	{
+		rtcw_so_bss_segment_start = 0;
+		*(.bss)
+		rtcw_so_bss_segment_end = .;
+	}
+
+	.sdata :
+	{
+		rtcw_so_sdata_segment_start = 0;
+		*(.sdata)
+		rtcw_so_sdata_segment_end = .;
+	}
+
+	.data :
+	{
+		rtcw_so_data_segment_start = 0;
+		*(.data)
+		rtcw_so_data_segment_end = .;
+	}
+}
+
+

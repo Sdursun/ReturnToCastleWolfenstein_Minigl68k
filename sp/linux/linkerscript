@@ -1,0 +1,17 @@
+SECTIONS
+{
+	.sbss : { *(.sbss) }
+	.bss : { *(.bss) }
+	.sdata : { *(.sdata) }
+	.data : { *(.data) }
+}
+
+rtcw_so_sbss_segment_start = ADDR(.sbss);
+rtcw_so_sbss_segment_end = ADDR(.sbss) + SIZEOF(.sbss);
+rtcw_so_bss_segment_start = ADDR(.bss);
+rtcw_so_bss_segment_end = ADDR(.bss) + SIZEOF(.bss);
+rtcw_so_sdata_segment_start = ADDR(.sdata);
+rtcw_so_sdata_segment_end = ADDR(.sdata) + SIZEOF(.sdata);
+rtcw_so_data_segment_start = ADDR(.data);
+rtcw_so_data_segment_end = ADDR(.data) + SIZEOF(.data);
+
