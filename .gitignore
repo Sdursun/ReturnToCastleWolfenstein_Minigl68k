@@ -5,3 +5,4 @@ PiStorm3D/
 # Build output
 sp/amigaos/objects/
 build.log
+release/
