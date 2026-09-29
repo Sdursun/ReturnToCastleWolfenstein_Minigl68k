@@ -12,8 +12,8 @@ Requirements
 - RTG (Picasso96 or CyberGraphX)
 - minigl.library in LIBS: (from PiStorm3D, not included here)
 - AHI for sound
-- Plenty of Fast RAM: the executable alone needs about 25 MB, the game
-  data about as much again
+- Plenty of Fast RAM: about 200 MB free is recommended (25 MB for the
+  program, 96 MB for sound, the rest for game data)
 
 Installing
 ----------
@@ -44,11 +44,20 @@ Notes
   can be ignored.
 - Loading should be faster from PFS3 or SFS than from FFS (not measured):
   the game seeks a lot inside the large pak0.pk3, which is slow on FFS.
-- Loading a level takes about 25-30 s on FFS (measured on escape1).
+- Loading a level takes about 20-25 s on FFS (measured on escape1). With
+  1 GB of RAM the pk3 RAM cache (fs_ramcache) makes later loads about 20%
+  faster.
 
 Useful settings (on the command line as +set name value, or in the
 console):
   r_vertexlight 1    no lightmaps: about 10 fps faster, flatter lighting
+  com_soundMegs 96   sound memory in MB (the default on AmigaOS; less made
+                     fights stutter). On machines with little Fast RAM start
+                     with +set com_soundMegs 24
+  fs_ramcache -1     RAM cache for files read from the pk3s, in MB, so
+                     later map loads come from memory. -1 (default): 256 MB
+                     if at least 600 MB of Fast RAM are free, else off.
+                     0 turns it off, e.g. 400 sets 400 MB.
   r_mode 3           640x480 (the default); r_mode 4 is 800x600
   r_fullscreen 0     windowed on the Workbench screen
   r_colorbits 16     16 (default), 24 or 32

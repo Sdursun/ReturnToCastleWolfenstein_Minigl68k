@@ -38,7 +38,14 @@ If you have questions concerning this license or the applicable additional terms
 
 #include "snd_local.h"
 
+#ifdef __amigaos__
+// AmigaOS port: with 24 MB fights stuttered on PiStorm, with 96 MB they
+// played noticeably smoother (probably fewer sounds evicted from memory and
+// reloaded from disk mid-game). Needs that much free Fast RAM.
+#define DEF_COMSOUNDMEGS "96"
+#else
 #define DEF_COMSOUNDMEGS "24"    // (SA) upped for GD
+#endif
 
 /*
 ===============================================================================
@@ -103,7 +110,18 @@ void SND_setup() {
 
 	cv = Cvar_Get( "com_soundMegs", DEF_COMSOUNDMEGS, CVAR_LATCH | CVAR_ARCHIVE );
 
+#ifdef __amigaos__
+	// configs saved by earlier versions still hold the old default of 24:
+	// use the new one now, and save it for the next start
+	if ( cv->integer == 24 ) {
+		Cvar_Set( "com_soundMegs", DEF_COMSOUNDMEGS );
+		scs = atoi( DEF_COMSOUNDMEGS ) * 512;
+	} else {
+		scs = cv->integer * 512;
+	}
+#else
 	scs = cv->integer * 512;
+#endif
 
 	free(buffer);
 	buffer = malloc( scs * sizeof( sndBuffer ) );

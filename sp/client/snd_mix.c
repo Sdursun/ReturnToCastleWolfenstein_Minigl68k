@@ -523,6 +523,36 @@ static void S_PaintChannelFrom16( channel_t *ch, const sfx_t *sc, int count, int
 		rightvol = ch->rightvol * snd_vol;
 
 		samples = chunk->sndChunk;
+#ifdef __amigaos__
+		// AmigaOS port: same result, but the chunk boundary is checked
+		// once per run of samples instead of once per sample
+		while ( count > 0 ) {
+			const short *s;
+			int run;
+
+			if ( sampleOffset >= SND_CHUNK_SIZE ) {
+				chunk = chunk->next;
+				if ( chunk == NULL ) {
+					chunk = sc->soundData;
+				}
+				samples = chunk->sndChunk;
+				sampleOffset -= SND_CHUNK_SIZE;
+			}
+			run = SND_CHUNK_SIZE - sampleOffset;
+			if ( run > count ) {
+				run = count;
+			}
+			s = samples + sampleOffset;
+			sampleOffset += run;
+			count -= run;
+			while ( run-- > 0 ) {
+				data = *s++;
+				samp->left += ( data * leftvol ) >> 8;
+				samp->right += ( data * rightvol ) >> 8;
+				samp++;
+			}
+		}
+#else
 		for ( i = 0; i < count; i++ ) {
 			if ( sampleOffset >= SND_CHUNK_SIZE ) {
 				chunk = chunk->next;
@@ -536,6 +566,7 @@ static void S_PaintChannelFrom16( channel_t *ch, const sfx_t *sc, int count, int
 			samp[i].left += ( data * leftvol ) >> 8;
 			samp[i].right += ( data * rightvol ) >> 8;
 		}
+#endif
 	} else {
 		fleftvol = ch->leftvol * snd_vol;
 		frightvol = ch->rightvol * snd_vol;

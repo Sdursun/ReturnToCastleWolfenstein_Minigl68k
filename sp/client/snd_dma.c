@@ -1413,8 +1413,24 @@ void S_Update( void ) {
 		Com_Printf( "----(%i)---- painted: %i\n", total, s_paintedtime );
 	}
 	// add loopsounds
+#ifdef __amigaos__
+	// AmigaOS port: time spent here, printed per frame by r_amigaspeeds
+	{
+		extern int amiga_speeds;
+		extern unsigned int amiga_soundMicros;
+		unsigned int Amiga_Micros( void );
+		unsigned int start = amiga_speeds ? Amiga_Micros() : 0;
+
+		S_AddLoopSounds();
+		S_UpdateThread();
+		if ( amiga_speeds ) {
+			amiga_soundMicros += Amiga_Micros() - start;
+		}
+	}
+#else
 	S_AddLoopSounds();
 	S_UpdateThread();
+#endif
 }
 
 
@@ -1619,6 +1635,11 @@ void S_Update_Mix( void ) {
 
 	// never mix more than the complete buffer
 	samps = dma.samples >> ( dma.channels - 1 );
+#ifdef __amigaos__
+	// AmigaOS port: AHI reports the play position only once per mixing
+	// pass, so keep a quarter of the buffer clear of the painter
+	samps -= samps / 4;
+#endif
 	if ( endtime - s_soundtime > samps ) {
 		endtime = s_soundtime + samps;
 	}

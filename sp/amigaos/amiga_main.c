@@ -413,6 +413,12 @@ static int CheckStructLayout(void)
 	return 1;
 }
 
+/* Free Fast RAM in MB, for sizing the pk3 RAM cache (files.c). */
+int Sys_AmigaFreeFastMB(void)
+{
+	return (int)(AvailMem(MEMF_FAST) >> 20);
+}
+
 /* Microseconds, wrapping; for measuring short intervals (r_amigaspeeds). */
 unsigned int Amiga_Micros(void)
 {

@@ -7,7 +7,8 @@ Gerekenler
 - RTG (Picasso96 veya CyberGraphX)
 - LIBS: icinde minigl.library (PiStorm3D'den; bu pakette yok)
 - Ses icin AHI
-- Bol Fast RAM (program tek basina ~25 MB, oyun verisi de bir o kadar)
+- Bol Fast RAM: en az ~200 MB bos bellek onerilir (program ~25 MB, ses
+  bellegi 96 MB, gerisi oyun verisi)
 
 Kurulum
 -------
@@ -40,5 +41,12 @@ Notlar
 - r_vertexlight 1 yaklasik 10 FPS kazandirir, isiklandirma daha duz olur
   (amiga.cfg bunu acar).
 - Pencere modunda fare imleci gosterilmez.
+- Ses bellegi varsayilan olarak 96 MB (com_soundMegs). Daha azi
+  catismalarda takilmaya yol aciyordu. Az bellekli sistemlerde
+  +set com_soundMegs 24 ile baslatin.
+- 1 GB bellekli sistemlerde (en az 600 MB bos Fast RAM) oyun pk3 dosyalarindan
+  okudugu dosyalari 256 MB'lik bir RAM onbellekte tutar; ikinci ve sonraki
+  harita yuklemeleri daha hizli olur. Ayar: fs_ramcache (0 kapali, -1
+  otomatik, sayi = MB).
 
 Ayrintilar ve diger ayarlar icin README.txt'ye bakin.

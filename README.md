@@ -30,8 +30,30 @@ Tested on AmigaOS 3.2, PiStorm with Raspberry Pi 4 (Emu68), PiStorm3D
 - Menus, levels, cutscenes, sound (AHI), keyboard, mouse and console work.
 - About 40 fps standing, 20-38 fps moving, at 640x480 in the first level
   (`escape1`); `r_vertexlight 1` adds about 10 fps.
-- Loading a level takes about 25-30 s from an FFS partition.
+- Loading a level takes about 20-25 s from an FFS partition. With 1 GB of
+  RAM, files read from the pk3s are kept in a RAM cache, and later loads
+  are about 20% faster (escape1 after the intro: 23 s → 18 s).
+- Sound is clean with Paula; fights play smoother with the 96 MB sound
+  memory that is now the default.
 - Quitting returns cleanly to the Shell.
+
+## Changes
+
+**0.2**
+
+- Fixed crackling sound, which got worse when the frame rate dropped: the
+  AHI buffer was only 93 ms with the Paula 14-bit modes, while the game
+  mixes half a second ahead. It is now about 0.75 s.
+- Sound memory (`com_soundMegs`) is now 96 MB by default; with 24 MB fights
+  stuttered. Needs about 200 MB of free Fast RAM in total.
+- New RAM cache for files read from the pk3s (`fs_ramcache`), switched on
+  automatically when at least 600 MB of Fast RAM are free (256 MB cache).
+- A slightly faster sound mixing loop.
+- `amiga.cfg`: removed a semicolon from a comment that made the console
+  print `Unknown command "lower"`.
+- `r_amigaspeeds 1` also shows the time spent on sound.
+
+**0.1** – first public test release.
 
 Known limitations:
 
@@ -259,6 +281,12 @@ yaratabileceğine inanıyorum.
 
 Durum: 640x480'de ilk bölümde yaklaşık 40 FPS (hareket halinde 20-38);
 `r_vertexlight 1` yaklaşık 10 FPS daha kazandırır.
+
+0.2 sürümündeki yenilikler: sesteki çıtırtı giderildi (AHI tamponu 93 ms
+yerine yaklaşık 0,75 saniye), ses belleği varsayılan olarak 96 MB (çatışmalar
+daha akıcı), 1 GB bellekli sistemlerde pk3 dosyaları için otomatik RAM
+önbelleği (sonraki harita yüklemeleri yaklaşık %20 daha hızlı) ve
+amiga.cfg'deki "Unknown command lower" uyarısının düzeltmesi.
 Menüler, bölümler, ara sahneler, ses, klavye, fare ve konsol çalışıyor.
 
 Kurulum ve derleme adımları yukarıda (İngilizce) ayrıntılı olarak

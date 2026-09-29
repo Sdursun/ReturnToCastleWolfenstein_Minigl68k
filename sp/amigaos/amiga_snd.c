@@ -145,19 +145,16 @@ qboolean SNDDMA_Init(void)
 						bits = 16;
 
 						{
-							if (strncmp(modename, "EMU10kx:", 8) == 0
-							 || strncmp(modename, "Unit 0:", 7) == 0
-							 || strncmp(modename, "Unit 1:", 7) == 0
-							 || strncmp(modename, "Unit 2:", 7) == 0
-							 || strncmp(modename, "Unit 3:", 7) == 0)
-							{
-								/* This driver seems rather buggy and stutters with low buffer size */
-								buffersize = 16384;
-							}
-							else
-							{
-								buffersize = 4096;
-							}
+							/* Ring buffer length in sample frames. The mixer masks
+							   positions with dma.samples - 1, so it must be a power
+							   of two. It used to be 4096 * (speed / 11025) samples,
+							   which was 93 ms at the 22030 Hz of AHI's Paula 14 bit
+							   modes (integer division), far less than the half
+							   second the mixer paints ahead: it painted over what
+							   AHI was playing, and every frame longer than the
+							   buffer ran it dry, so the sound crackled, the more
+							   the lower the frame rate. Now about 0.75 s. */
+							buffersize = speed > 32000 ? 32768 : 16384;
 
 							if (channels > 2)
 								channels = 2;
@@ -165,10 +162,10 @@ qboolean SNDDMA_Init(void)
 							dma.speed = speed;
 							dma.samplebits = bits;
 							dma.channels = channels;
-							dma.samples = buffersize*(speed/11025);
+							dma.samples = buffersize*channels;
 							dma.submission_chunk = 1;
 
-							ad->samplebuffer = AllocVec(buffersize*(speed/11025)*(bits/8)*channels, MEMF_ANY|MEMF_CLEAR);
+							ad->samplebuffer = AllocVec(buffersize*(bits/8)*channels, MEMF_ANY|MEMF_CLEAR);
 							if (ad->samplebuffer)
 							{
 								dma.buffer = ad->samplebuffer;
@@ -189,7 +186,7 @@ qboolean SNDDMA_Init(void)
 								}
 
 								sample.ahisi_Address = ad->samplebuffer;
-								sample.ahisi_Length = (buffersize*(speed/11025)*(bits/8))/AHI_SampleFrameSize(sample.ahisi_Type);
+								sample.ahisi_Length = buffersize;
 
 								r = AHI_LoadSound(0, AHIST_DYNAMICSAMPLE, &sample, ad->audioctrl);
 								if (r == 0)

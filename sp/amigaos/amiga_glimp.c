@@ -32,6 +32,7 @@ int mousevisible;
 int amiga_speeds;
 unsigned int amiga_drawMicros, amiga_drawCalls, amiga_drawIndexes;
 unsigned int amiga_shadeMicros;
+unsigned int amiga_soundMicros;
 
 static cvar_t *r_amigaspeeds;
 static cvar_t *r_mglbuffers;
@@ -318,13 +319,14 @@ void GLimp_EndFrame(void)
 		/* shade: stage iterators without the draws; tessellation per surface
 		   type in ms (count), which may include shading when the tess
 		   buffer fills up mid-surface */
-		ri.Printf(PRINT_ALL, "amiga: draw %u.%u (%u calls, %u idx) shade %u.%u swap %u.%u |%s\n",
+		ri.Printf(PRINT_ALL, "amiga: draw %u.%u (%u calls, %u idx) shade %u.%u swap %u.%u sound %u.%u |%s\n",
 			amiga_drawMicros / 1000, amiga_drawMicros / 100 % 10, amiga_drawCalls, amiga_drawIndexes,
 			shade / 1000, shade / 100 % 10,
-			start / 1000, start / 100 % 10, surfs);
+			start / 1000, start / 100 % 10,
+			amiga_soundMicros / 1000, amiga_soundMicros / 100 % 10, surfs);
 	}
 
-	amiga_drawMicros = amiga_drawCalls = amiga_drawIndexes = amiga_shadeMicros = 0;
+	amiga_drawMicros = amiga_drawCalls = amiga_drawIndexes = amiga_shadeMicros = amiga_soundMicros = 0;
 	amiga_speeds = r_amigaspeeds->integer;
 }
 

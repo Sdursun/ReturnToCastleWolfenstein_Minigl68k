@@ -1692,9 +1692,218 @@ int amiga_fsDiskProbes, amiga_fsDiskProbeMsec;
 
 static int FS_ReadFile_Timed( const char *qpath, void **buffer );
 
+/*
+ * RAM cache for files read out of the pk3s.
+ *
+ * Every map load reads the same weapons, items, player models and menu
+ * graphics again, seeking inside the big pk3s and inflating them each
+ * time. With enough Fast RAM (1 GB PiStorms), the contents of files read
+ * from a pk3 are kept after the first read, so later map loads, saved
+ * games and vid_restarts copy them from memory.
+ *
+ * Only files that came out of a pk3 are cached: those never change while
+ * the game runs. Loose files (configs, saved games, anything the game
+ * writes) always come from disk. The least recently used files go first
+ * when the budget is full.
+ *
+ * fs_ramcache: size in MB; 0 is off, -1 (the default) means 256 MB if
+ * there are at least 600 MB of free Fast RAM when the game starts reading
+ * files, else off.
+ */
+typedef struct ramfile_s {
+	struct ramfile_s    *hashNext;
+	struct ramfile_s    *lruPrev, *lruNext;     // lruHead is the most recent
+	int len;
+	byte                *data;
+	char name[MAX_QPATH];
+} ramfile_t;
+
+#define RAMCACHE_HASH   1024
+
+static ramfile_t    *ramHash[RAMCACHE_HASH];
+static ramfile_t    *ramLruHead, *ramLruTail;
+static int ramBytes;
+static char ramGamedir[MAX_OSPATH];
+static cvar_t       *fs_ramcache;
+static qboolean amiga_readFromPak;      // set by FS_ReadFile_Timed
+
+// cache statistics, printed and reset by RE_EndRegistration
+int amiga_fsCacheHits, amiga_fsCacheHitKB;
+
+int Sys_AmigaFreeFastMB( void );    // amiga_main.c
+
+static int RamCache_Budget( void ) {
+	static int autoMB = -1;
+	int mb;
+
+	if ( !fs_ramcache ) {
+		fs_ramcache = Cvar_Get( "fs_ramcache", "-1", CVAR_ARCHIVE );
+	}
+	mb = fs_ramcache->integer;
+	if ( mb < 0 ) {
+		if ( autoMB < 0 ) {
+			autoMB = Sys_AmigaFreeFastMB() >= 600 ? 256 : 0;
+			Com_Printf( "fs_ramcache: %i MB for pk3 files\n", autoMB );
+		}
+		mb = autoMB;
+	}
+	if ( mb > 1024 ) {
+		mb = 1024;
+	}
+	return mb * 1024 * 1024;
+}
+
+// lower case, forward slashes; returns the hash
+static unsigned RamCache_Key( const char *qpath, char *key ) {
+	unsigned hash = 0;
+	int i, c;
+
+	for ( i = 0; qpath[i] && i < MAX_QPATH - 1; i++ ) {
+		c = tolower( (unsigned char)qpath[i] );
+		if ( c == '\\' ) {
+			c = '/';
+		}
+		key[i] = c;
+		hash = hash * 31 + c;
+	}
+	key[i] = 0;
+	return hash & ( RAMCACHE_HASH - 1 );
+}
+
+static void RamCache_Unlink( ramfile_t *rf ) {
+	if ( rf->lruPrev ) {
+		rf->lruPrev->lruNext = rf->lruNext;
+	} else {
+		ramLruHead = rf->lruNext;
+	}
+	if ( rf->lruNext ) {
+		rf->lruNext->lruPrev = rf->lruPrev;
+	} else {
+		ramLruTail = rf->lruPrev;
+	}
+	rf->lruPrev = rf->lruNext = NULL;
+}
+
+static void RamCache_LinkHead( ramfile_t *rf ) {
+	rf->lruPrev = NULL;
+	rf->lruNext = ramLruHead;
+	if ( ramLruHead ) {
+		ramLruHead->lruPrev = rf;
+	} else {
+		ramLruTail = rf;
+	}
+	ramLruHead = rf;
+}
+
+static void RamCache_Free( ramfile_t *rf ) {
+	char key[MAX_QPATH];
+	ramfile_t **p = &ramHash[RamCache_Key( rf->name, key )];
+
+	while ( *p && *p != rf ) {
+		p = &( *p )->hashNext;
+	}
+	if ( *p ) {
+		*p = rf->hashNext;
+	}
+	RamCache_Unlink( rf );
+	ramBytes -= rf->len;
+	free( rf->data );
+	free( rf );
+}
+
+static void RamCache_Flush( void ) {
+	while ( ramLruTail ) {
+		RamCache_Free( ramLruTail );
+	}
+}
+
+// the same name can mean another file in another game directory (a mod)
+static void RamCache_CheckGamedir( void ) {
+	if ( strcmp( ramGamedir, fs_gamedir ) ) {
+		RamCache_Flush();
+		Q_strncpyz( ramGamedir, fs_gamedir, sizeof( ramGamedir ) );
+	}
+}
+
+static ramfile_t *RamCache_Find( const char *qpath ) {
+	char key[MAX_QPATH];
+	ramfile_t *rf;
+
+	RamCache_CheckGamedir();
+	for ( rf = ramHash[RamCache_Key( qpath, key )]; rf; rf = rf->hashNext ) {
+		if ( !strcmp( rf->name, key ) ) {
+			RamCache_Unlink( rf );
+			RamCache_LinkHead( rf );
+			return rf;
+		}
+	}
+	return NULL;
+}
+
+static void RamCache_Add( const char *qpath, const void *data, int len ) {
+	char key[MAX_QPATH];
+	unsigned hash;
+	ramfile_t *rf;
+	int budget = RamCache_Budget();
+
+	if ( len <= 0 || len > budget / 8 ) {
+		return;
+	}
+	RamCache_CheckGamedir();
+	while ( ramLruTail && ramBytes + len > budget ) {
+		RamCache_Free( ramLruTail );
+	}
+
+	rf = malloc( sizeof( *rf ) );
+	if ( !rf ) {
+		return;
+	}
+	rf->data = malloc( len );
+	if ( !rf->data ) {
+		free( rf );
+		return;
+	}
+	memcpy( rf->data, data, len );
+	rf->len = len;
+	hash = RamCache_Key( qpath, key );
+	Q_strncpyz( rf->name, key, sizeof( rf->name ) );
+	rf->hashNext = ramHash[hash];
+	ramHash[hash] = rf;
+	RamCache_LinkHead( rf );
+	ramBytes += len;
+}
+
 int FS_ReadFile( const char *qpath, void **buffer ) {
 	int start = Sys_Milliseconds();
-	int r = FS_ReadFile_Timed( qpath, buffer );
+	qboolean useCache;
+	ramfile_t *rf;
+	int r;
+
+	// configs can change and may go through the journal: never cached
+	useCache = fs_searchpaths && qpath && qpath[0] && !strstr( qpath, ".cfg" )
+			   && !( com_journal && com_journal->integer ) && RamCache_Budget() > 0;
+
+	if ( useCache && ( rf = RamCache_Find( qpath ) ) != NULL ) {
+		if ( buffer ) {
+			byte *buf = Hunk_AllocateTempMemory( rf->len + 1 );
+
+			memcpy( buf, rf->data, rf->len );
+			buf[rf->len] = 0;
+			*buffer = buf;
+			fs_loadCount++;
+			fs_loadStack++;
+			amiga_fsCacheHits++;
+			amiga_fsCacheHitKB += rf->len / 1024;
+		}
+		amiga_fsReadMsec += Sys_Milliseconds() - start;
+		return rf->len;
+	}
+
+	amiga_readFromPak = qfalse;
+	r = FS_ReadFile_Timed( qpath, buffer );
+	if ( useCache && buffer && *buffer && r > 0 && amiga_readFromPak ) {
+		RamCache_Add( qpath, *buffer, r );
+	}
 
 	amiga_fsReadMsec += Sys_Milliseconds() - start;
 	return r;
@@ -1773,6 +1982,7 @@ int FS_ReadFile( const char *qpath, void **buffer ) {
 		int openMsec;
 
 		len = FS_FOpenFileRead( qpath, &h, qfalse );
+		amiga_readFromPak = h != 0 && fsh[h].zipFile;
 		openMsec = Sys_Milliseconds() - openStart;
 		amiga_fsOpenMsec += openMsec;
 		amiga_fsOpenCount++;

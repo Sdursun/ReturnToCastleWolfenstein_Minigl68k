@@ -1344,14 +1344,17 @@ void RE_EndRegistration( void ) {
 		extern int amiga_fsOpenMsec, amiga_fsOpenCount, amiga_fsOpenFail, amiga_fsOpenFailMsec;
 		extern int amiga_fsInflateMsec, amiga_fsBytes;
 		extern int amiga_fsDiskProbes, amiga_fsDiskProbeMsec;
+		extern int amiga_fsCacheHits, amiga_fsCacheHitKB;
 
 		ri.Printf( PRINT_DEVELOPER, "files: %i lookups %i ms (%i found %i ms, %i not found %i ms), %i directory fopen()s %i ms; "
-				   "%i KB read/inflated %i ms\n",
+				   "%i KB read/inflated %i ms; RAM cache %i hits %i KB\n",
 				   amiga_fsOpenCount, amiga_fsOpenMsec,
 				   amiga_fsOpenCount - amiga_fsOpenFail, amiga_fsOpenMsec - amiga_fsOpenFailMsec,
 				   amiga_fsOpenFail, amiga_fsOpenFailMsec,
 				   amiga_fsDiskProbes, amiga_fsDiskProbeMsec,
-				   amiga_fsBytes / 1024, amiga_fsInflateMsec );
+				   amiga_fsBytes / 1024, amiga_fsInflateMsec,
+				   amiga_fsCacheHits, amiga_fsCacheHitKB );
+		amiga_fsCacheHits = amiga_fsCacheHitKB = 0;
 		amiga_fsOpenMsec = amiga_fsOpenCount = amiga_fsOpenFail = amiga_fsOpenFailMsec = 0;
 		amiga_fsInflateMsec = amiga_fsBytes = 0;
 		amiga_fsDiskProbes = amiga_fsDiskProbeMsec = 0;
