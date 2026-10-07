@@ -10,7 +10,8 @@ Requirements
 ------------
 - AmigaOS 3.x, a 68040 or better with an FPU (Emu68 qualifies)
 - RTG (Picasso96 or CyberGraphX)
-- minigl.library in LIBS: (from PiStorm3D, not included here)
+- minigl.library 29.1 or newer in LIBS: (from PiStorm3D, not included
+  here). Versions 0.1 and 0.2 of this port need the older 27.x library.
 - AHI for sound
 - Plenty of Fast RAM: about 200 MB free is recommended (25 MB for the
   program, 96 MB for sound, the rest for game data)
@@ -58,7 +59,9 @@ console):
                      later map loads come from memory. -1 (default): 256 MB
                      if at least 600 MB of Fast RAM are free, else off.
                      0 turns it off, e.g. 400 sets 400 MB.
-  r_mode 3           640x480 (the default); r_mode 4 is 800x600
+  r_mode 3           640x480 (the default); r_mode 4 is 800x600,
+                     r_mode 13 is 1280x720, r_mode 14 is 1920x1080
+                     (a matching RTG screen mode is needed in fullscreen)
   r_fullscreen 0     windowed on the Workbench screen
   r_colorbits 16     16 (default), 24 or 32
   r_depthbits 24     16 or 24 (default)
@@ -83,5 +86,5 @@ Building
   ./build.sh clean
 
 The output is objects/rtcw-sp. See the Makefile for how the three game
-modules are linked into the executable, and minigl-shim/README.txt for the
-SDK workaround.
+modules are linked into the executable. It needs the PiStorm3D 29.1 SDK
+(../../PiStorm3D/SDK by default).

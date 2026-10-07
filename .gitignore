@@ -1,8 +1,9 @@
 # Release folder (binary package, not part of the source)
 RTCW_Pistorm/
-# PiStorm3D SDK: download it separately, see README.md
-PiStorm3D/
 # Build output
 sp/amigaos/objects/
 build.log
 release/
+# PiStorm3D SDK: download it separately, see README.md
+PiStorm3D/
+PiStorm3D_*/

@@ -39,6 +39,13 @@ Tested on AmigaOS 3.2, PiStorm with Raspberry Pi 4 (Emu68), PiStorm3D
 
 ## Changes
 
+**0.3** (test release, not yet tested on hardware)
+
+- Built against the PiStorm3D 29.1 SDK. **Needs minigl.library 29.1 or
+  newer**; 0.1 and 0.2 need the older 27.x library, and 29.x refuses them.
+- `r_mode 13` (1280x720) and `r_mode 14` (1920x1080).
+- `ROADMAP.md` with the plans and what we know about each item.
+
 **0.2**
 
 - Fixed crackling sound, which got worse when the frame rate dropped: the
@@ -54,6 +61,8 @@ Tested on AmigaOS 3.2, PiStorm with Raspberry Pi 4 (Emu68), PiStorm3D
 - `r_amigaspeeds 1` also shows the time spent on sound.
 
 **0.1** – first public test release.
+
+What comes next, with what we know about each item: [`ROADMAP.md`](ROADMAP.md).
 
 Known limitations:
 
@@ -73,7 +82,7 @@ Requirements:
 
 - AmigaOS 3.x, a 68040 or better with an FPU (Emu68 qualifies)
 - RTG (Picasso96 or CyberGraphX)
-- `minigl.library` in `LIBS:` (from the PiStorm3D release)
+- `minigl.library` **29.1 or newer** in `LIBS:` (from the PiStorm3D release)
 - AHI
 - Plenty of Fast RAM (about 25 MB for the executable, as much again for
   data)
@@ -131,12 +140,18 @@ the PiStorm3D release (see the
 and copy its `PiStorm3D` directory next to `sp/`, so that these exist:
 
 ```
-PiStorm3D/dev/include/proto/minigl.h
-PiStorm3D/dev/lib/libminigl.a
+PiStorm3D/SDK/minigl-shared-library/include/proto/minigl.h
+PiStorm3D/SDK/backend/include/v3d_vertex.h
+PiStorm3D/SDK/lib/libminigl.a
 ```
 
+This needs the **29.1 SDK or newer**. The library and its clients must
+match: a program built against the 29.x SDK needs `minigl.library` 29.x,
+and 29.x refuses programs built against older SDKs (0.1 and 0.2 of this
+port were built against 27.6).
+
 A different location can be given on the make command line:
-`./build.sh MINIGL=/path/to/PiStorm3D/dev` (the path as seen inside the
+`./build.sh MINIGL=/path/to/PiStorm3D/SDK` (the path as seen inside the
 container, where the repository root is `/src`).
 
 ### 4. Build
@@ -217,8 +232,8 @@ files. In short:
   on hardware.
 - `botlib/l_script.c` is built with `-O1` because gcc 6.5 crashes on it
   with `-O2 -malign-int`.
-- `sp/amigaos/minigl-shim/` replaces three SDK headers that include
-  backend headers the SDK does not ship.
+- `sp/amigaos/amiga_qgl.h` fills the gaps between the renderer and
+  MiniGL (no stencil buffer, no clip planes, GL 1.0 texture formats).
 
 ## Credits
 
@@ -249,10 +264,10 @@ or endorsed by id Software or ZeniMax Media.
   licence requires. The combined program is distributed under the GPL
   version 3 with the additional terms above.
 - `sp/amigaos/thirdparty/stb_sprintf.h` is public domain or MIT.
-- `sp/amigaos/minigl-shim/` is derived from the PiStorm3D SDK headers and
-  is under the Hyperion MiniGL Open Source License: MiniGL may only be used
-  on AmigaOS, and modifications must be made available to the Amiga
-  developer community.
+- MiniGL (the PiStorm3D SDK and `minigl.library`, not included) is under
+  the Hyperion MiniGL Open Source License: MiniGL may only be used on
+  AmigaOS, and modifications must be made available to the Amiga developer
+  community.
 - `minigl.library` itself is not included.
 - "Return to Castle Wolfenstein" and "Wolfenstein" are trademarks of their
   owners and are used here only to describe what the software is.

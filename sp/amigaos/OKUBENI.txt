@@ -5,7 +5,8 @@ Gerekenler
 ----------
 - AmigaOS 3.x, FPU'lu 68040 veya ustu (Emu68 uygundur)
 - RTG (Picasso96 veya CyberGraphX)
-- LIBS: icinde minigl.library (PiStorm3D'den; bu pakette yok)
+- LIBS: icinde minigl.library 29.1 veya ustu (PiStorm3D'den; bu pakette
+  yok). Bu portun 0.1 ve 0.2 surumleri eski 27.x kutuphanesini ister.
 - Ses icin AHI
 - Bol Fast RAM: en az ~200 MB bos bellek onerilir (program ~25 MB, ses
   bellegi 96 MB, gerisi oyun verisi)

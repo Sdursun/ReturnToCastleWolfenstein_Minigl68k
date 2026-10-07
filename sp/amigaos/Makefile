@@ -18,7 +18,10 @@ OBJCOPY = m68k-amigaos-objcopy
 STRIP   = m68k-amigaos-strip
 
 SRC     = ..
-MINIGL ?= ../../PiStorm3D/dev
+# PiStorm3D SDK 29.1 or newer (the SDK/ directory of the release). The
+# library and its clients must match: a program built against this SDK needs
+# minigl.library 29.x, and 29.x refuses programs built against older SDKs.
+MINIGL ?= ../../PiStorm3D/SDK
 SWAPSTACK ?= /opt/amiga/m68k-amigaos/libnix/lib/swapstack.o
 
 CPU     = -m68040
@@ -32,7 +35,7 @@ CPU     = -m68040
 # likely the same float-return mismatch amiga_libfix.c works around.
 BASEFLAGS = -O2 -noixemul $(CPU) -fsigned-char -fno-strict-aliasing -fno-math-errno \
             -fno-builtin-sin -fno-builtin-cos -fno-builtin-sinf -fno-builtin-cosf \
-            -DNDEBUG -DBOTLIB -Iminigl-shim -I$(MINIGL)/include
+            -DNDEBUG -DBOTLIB -I$(MINIGL)/minigl-shared-library/include
 
 # Game code: 4-byte aligned ints, as on the PC, so that data files read
 # straight into structures (the bots' .aas files, for one) line up.

@@ -393,6 +393,11 @@ vidmode_t r_vidModes[] =
 	{ "Mode 10: 2048x1536",      2048,   1536,   1 },
 	{ "Mode 11: 856x480 (wide)",856, 480,    1 },
 	{ "Mode 12: 1920x1200 (wide)",1920,  1200,   1 }     //----(SA)	added
+#ifdef __amigaos__
+	// AmigaOS port: HD modes for Raspberry Pi based RTG over HDMI
+	,{ "Mode 13: 1280x720 (720p)",  1280,   720,    1 }
+	,{ "Mode 14: 1920x1080 (1080p)",1920,   1080,   1 }
+#endif
 };
 static int s_numVidModes = ( sizeof( r_vidModes ) / sizeof( r_vidModes[0] ) );
 
