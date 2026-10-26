@@ -108,6 +108,51 @@ frame pointer or a libnix routine) would give a few percent everywhere.
   scene).
 - `com_maxfps 30` for steadier pacing, as an option in `amiga.cfg`.
 
+### A GLES2 renderer on ogles2.library (idea, long term)
+
+[ogles2](https://github.com/ladislawv/ogles2) (`ogles2.library` 1.3.2, by
+R-Typer and Ladislawv) is OpenGL ES 2.0 for AmigaOS 3.x on a Pi 4
+PiStorm, built on PiStorm3D's V3D backend. Unlike MiniGL it runs GLSL
+shaders on the GPU, and it has buffer objects (VBOs), stencil, framebuffer
+objects, DXT textures and 4x MSAA. Its own documentation says what our
+measurements say: the GPU is fast, the 68k side is the limit.
+
+Why it fits our bottleneck: most of the ~13 ms back end is 68k work per
+vertex and per shader stage. A GLES2 renderer could move it to the GPU:
+
+- `tcMod`, `rgbGen`/`alphaGen` waves, `deformVertexes` and fog computed
+  in vertex and fragment shaders instead of on the 68k;
+- static world geometry uploaded once into VBOs instead of tessellated
+  every frame;
+- multi-stage shaders blended in one pass;
+- features MiniGL lacks: stencil shadows, clipping for mirrors and
+  portals (in the shader), real gamma.
+
+What it costs and what is not known yet:
+
+- A new renderer back end that turns Quake 3 shaders into GLSL: weeks of
+  work, not a port. iortcw's OpenGL 2 renderer (rend2) is a possible
+  starting point, but it targets desktop GL and would need a GLES2 and
+  68k-friendly rework.
+- gl4es on top of ogles2 (fixed-function GL translated to GLES2) is not a
+  shortcut: it adds a translation layer on the 68k instead of removing
+  work, and it generates shaders at run time, so it needs the 19 MB
+  `v3dglslc` compiler installed. Probably slower than MiniGL.
+- The SDK is documented for clib2 (`-mcrt=clib2`); this port uses libnix.
+  Whether `libogles2.a` links and works with libnix has to be tried.
+- Shaders should ship precompiled (`.v3dp` and `.v3ds` files, named by a
+  hash of the GLSL text); otherwise the first start compiles for seconds
+  and needs the compiler. Windowed mode needs a 32-bit RTG screen.
+
+First steps, if this is taken up:
+
+1. A small test program linked against `libogles2.a` with libnix and
+   `-noixemul`, to settle the C library question.
+2. Use the sampling profiler's numbers to estimate how much of a frame a
+   GLES2 renderer would remove.
+3. Prototype: world surfaces only, in VBOs with a generic lightmapped
+   shader, next to the MiniGL renderer, and compare fps in `escape1`.
+
 ## Loading
 
 - **done** pk3 central directory kept in memory (70 → 25 s).
