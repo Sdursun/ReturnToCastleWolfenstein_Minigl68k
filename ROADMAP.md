@@ -77,14 +77,13 @@ calls `timer.device` directly everywhere else. `tests/timetest.c` checks it on a
 machine. On the A1200 a read went from 20.4 µs (`gettimeofday`) to 2.0 µs, and
 `escape1` at 640x480 from 24.39 to 23.75 ms a frame.
 
-### Newer compiler (next, to be decided)
+### Newer compiler (done, to be played)
 
-gcc 6.5.0b 20260819 with `-m68040 -m68881` gives 22.04 ms a frame with the same
-source, against 23.75 ms with the older compiler. With the new clock its frame times
-are no longer stuck at 20 or 40 ms, `tests/mathtest.c` is clean, and three maps look
-the same and survive a walking script. A long play, and saving and loading, are still
-to be tried. Why it is faster is not known. Moving means `-m68881` and the
-`SWAPSTACK` path in the Makefile, and the Docker image in the README.
+The port now builds with gcc 6.5.0b 20260819 (`sacredbanana/amiga-compiler`) and
+`-m68040 -m68881`: 22.04 ms a frame in `escape1`, against 23.75 ms with the older
+compiler. `tests/mathtest.c` is clean, and three maps look the same and survive a
+walking script. A long play, and saving and loading, are still to be tried. Why it is
+faster is not known.
 
 ### Sampling profiler (next)
 

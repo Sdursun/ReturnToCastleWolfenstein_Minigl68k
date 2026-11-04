@@ -2,7 +2,7 @@
 # rendering through minigl.library (PiStorm3D or any other implementation).
 #
 # Needs bebbo's m68k-amigaos-gcc toolchain; build.sh runs this Makefile in
-# the amigadev/m68k-amigaos-gcc Docker image. Output: objects/rtcw-sp.
+# the sacredbanana/amiga-compiler Docker image. Output: objects/rtcw-sp.
 #
 # The game modules (qagame, cgame, ui) cannot be shared objects on
 # AmigaOS 3.x, so they are linked into the executable. Every global symbol
@@ -22,9 +22,15 @@ SRC     = ..
 # library and its clients must match: a program built against this SDK needs
 # minigl.library 29.x, and 29.x refuses programs built against older SDKs.
 MINIGL ?= ../../PiStorm3D/SDK
-SWAPSTACK ?= /opt/amiga/m68k-amigaos/libnix/lib/swapstack.o
+# The toolchain's install location differs: the Docker image has it in
+# /opt/m68k-amigaos, a native install usually in /opt/amiga.
+SWAPSTACK ?= $(firstword $(wildcard /opt/m68k-amigaos/m68k-amigaos/libnix/lib/swapstack.o \
+                                    /opt/amiga/m68k-amigaos/libnix/lib/swapstack.o))
 
-CPU     = -m68040
+# -m68881 is required. Newer builds of gcc 6.5.0b make soft-float code with
+# -m68040 alone (slow, with calls to __mulsf3), and crash on every float to int
+# conversion when -malign-int is added. Older builds made FPU code either way.
+CPU     = -m68040 -m68881
 
 # -fno-math-errno lets gcc use the FPU's fsqrt inline instead of calling sqrt.
 # It also lets gcc merge sin(x) and cos(x) of the same x into one call to

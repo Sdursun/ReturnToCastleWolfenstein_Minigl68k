@@ -82,7 +82,7 @@ Not supported
 
 Building
 --------
-  ./build.sh         (runs make in the amigadev/m68k-amigaos-gcc Docker image)
+  ./build.sh         (runs make in the sacredbanana/amiga-compiler Docker image)
   ./build.sh clean
 
 The output is objects/rtcw-sp. See the Makefile for how the three game

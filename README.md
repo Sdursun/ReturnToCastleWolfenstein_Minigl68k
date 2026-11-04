@@ -109,9 +109,8 @@ permanent. More notes (sound, console, settings) are in
 ## Building
 
 The game is cross-compiled on a PC with Stefan "Bebbo" Franke's
-m68k-amigaos-gcc 6.5 toolchain and libnix. The easiest way is the
-toolchain's Docker image, which works the same on Windows, Linux and
-macOS.
+m68k-amigaos-gcc 6.5 toolchain and libnix. The easiest way is a Docker image
+with that toolchain, which works the same on Windows, Linux and macOS.
 
 ### 1. Install Docker
 
@@ -119,11 +118,14 @@ macOS.
 - Linux: install `docker` from your distribution and make sure your user
   can run it (`docker run hello-world`).
 
-Then get the toolchain image (about 1.5 GB):
+Then get the toolchain image (about 6.5 GB):
 
 ```
-docker pull amigadev/m68k-amigaos-gcc:with-make
+docker pull sacredbanana/amiga-compiler:m68k-amigaos
 ```
+
+The port was last built and tested with gcc 6.5.0b 20260819 from this image.
+The tag moves, so if a later compiler misbehaves, run `mathtest` (below) first.
 
 ### 2. Get the source
 
@@ -179,11 +181,11 @@ Other targets:
 ./build.sh clean        removes sp/amigaos/objects
 ```
 
-A full build takes a few minutes. On Windows in PowerShell or cmd, run the
-same command `build.sh` runs:
+The Makefile does not track headers: after changing one, run `./build.sh clean`
+first. On Windows in PowerShell or cmd, run the same command `build.sh` runs:
 
 ```
-docker run --rm -v "%CD%:/src" -w /src/sp/amigaos amigadev/m68k-amigaos-gcc:with-make make -j8
+docker run --rm -v "%CD%:/src" -w /src/sp/amigaos sacredbanana/amiga-compiler:m68k-amigaos make -j8
 ```
 
 (from the repository root; in PowerShell use `${PWD}` instead of `%CD%`).
@@ -191,7 +193,7 @@ docker run --rm -v "%CD%:/src" -w /src/sp/amigaos amigadev/m68k-amigaos-gcc:with
 ### Building without Docker
 
 With the Bebbo toolchain installed natively (`m68k-amigaos-gcc` in the
-`PATH`, installed to `/opt/amiga`):
+`PATH`, installed to `/opt/amiga` or `/opt/m68k-amigaos`):
 
 ```
 cd sp/amigaos
@@ -225,7 +227,7 @@ files. In short:
 - **libnix fixes** (`amiga_libfix.c`). With `-m68040` libnix's float math
   functions return their result in `d0` while callers read `fp0`,
   `vsprintf` does not terminate empty output, and `%f` misrounds. The
-  float functions are replaced, and `printf` formatting goes through
+  float functions and `rint` are replaced, and `printf` formatting goes through
   `stb_sprintf`. `-fno-builtin-sin/cos` keeps gcc from fusing `sin`+`cos`
   into libnix's broken `cexp`.
 - **`-fomit-frame-pointer` must not be used**: it broke the 3D view again
