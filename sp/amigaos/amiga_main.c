@@ -424,15 +424,6 @@ int Sys_AmigaFreeFastMB(void)
 	return (int)(AvailMem(MEMF_FAST) >> 20);
 }
 
-/* Microseconds, wrapping; for measuring short intervals (r_amigaspeeds). */
-unsigned int Amiga_Micros(void)
-{
-	struct timeval tv;
-
-	gettimeofday(&tv, NULL);
-	return (unsigned int)tv.tv_sec * 1000000u + (unsigned int)tv.tv_usec;
-}
-
 /* Reports the stack actually in use, to tell whether libnix's swapstack
    gave us __stack bytes. MiniGL warns about a small stack at startup; it
    may be looking at the Shell's setting (pr_StackSize) instead. */
@@ -454,6 +445,7 @@ void Sys_Init()
 	Cvar_Set("arch", "amigaos m68k");
 
 	Cvar_Set("sys_cpustring", (char *)ProcessorName());
+	Com_Printf("Clock: %s\n", Amiga_ClockName());
 
 	IN_Init();
 }

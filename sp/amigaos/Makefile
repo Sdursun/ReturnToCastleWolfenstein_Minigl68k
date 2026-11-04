@@ -202,7 +202,8 @@ OS_OBJS = \
 	amigaos/amiga_layout.o \
 	amigaos/amiga_libfix.o \
 	amigaos/amiga_main.o \
-	amigaos/amiga_snd.o
+	amigaos/amiga_snd.o \
+	amigaos/amiga_time.o
 
 ###########################################################################
 # Game modules. The marker objects must stay first and last.

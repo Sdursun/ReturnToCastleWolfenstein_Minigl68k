@@ -70,14 +70,21 @@ sent whole.
 Open: the logo in the console background does not show in the area under the text.
 Cause not found, cosmetic.
 
-### Timer (next)
+### Timer (done, verified on the A1200 and in WinUAE)
 
-`Sys_Milliseconds` goes through `gettimeofday`. Moving it to Emu68's ARM counter
-(about 1.7 µs a read, against about 20 µs for `GetSysTime` as measured by OpenMoHAA)
-may be a cheap gain. A hint: the same code built with the newer compiler, whose
-libnix has a 20 ms clock, took 22.7 ms a frame against 24.2 ms in `escape1`. That
-clock is too coarse to use (frame times of 20 or 40 ms), so it also blocks moving to
-that compiler until `Sys_Milliseconds` is replaced.
+`amiga_time.c` reads Emu68's ARM counter when `devicetree.resource` is there, and
+calls `timer.device` directly everywhere else. `tests/timetest.c` checks it on any
+machine. On the A1200 a read went from 20.4 µs (`gettimeofday`) to 2.0 µs, and
+`escape1` at 640x480 from 24.39 to 23.75 ms a frame.
+
+### Newer compiler (next, to be decided)
+
+gcc 6.5.0b 20260819 with `-m68040 -m68881` gives 22.04 ms a frame with the same
+source, against 23.75 ms with the older compiler. With the new clock its frame times
+are no longer stuck at 20 or 40 ms, `tests/mathtest.c` is clean, and three maps look
+the same and survive a walking script. A long play, and saving and loading, are still
+to be tried. Why it is faster is not known. Moving means `-m68881` and the
+`SWAPSTACK` path in the Makefile, and the Docker image in the README.
 
 ### Sampling profiler (next)
 

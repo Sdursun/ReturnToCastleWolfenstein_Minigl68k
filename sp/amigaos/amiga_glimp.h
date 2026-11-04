@@ -40,4 +40,6 @@ extern unsigned int amiga_drawMaxVerts, amiga_drawMaxIndexes, amiga_drawOverVert
    type (tr_backend.c; arrays of SF_NUM_SURFACE_TYPES) */
 extern unsigned int amiga_shadeMicros;
 extern unsigned int amiga_surfMicros[], amiga_surfCount[];
+/* amiga_time.c: Emu68's ARM counter or timer.device. */
 unsigned int Amiga_Micros(void);
+const char *Amiga_ClockName(void);

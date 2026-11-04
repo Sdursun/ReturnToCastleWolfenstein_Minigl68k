@@ -55,6 +55,7 @@ static char homePath[MAX_OSPATH];
 Sys_Milliseconds
 ================
 */
+#ifndef __amigaos__ // AmigaOS port: see amigaos/amiga_time.c
 int curtime;
 int sys_timeBase;
 int Sys_Milliseconds( void ) {
@@ -72,6 +73,7 @@ int Sys_Milliseconds( void ) {
 
 	return curtime;
 }
+#endif
 
 
 //#if 0 // bk001215 - see snapvector.nasm for replacement
