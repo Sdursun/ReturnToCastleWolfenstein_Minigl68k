@@ -19,8 +19,8 @@
 
 /* ---- constants the SDK may not define ---------------------------------- */
 
-/* texture_env_add: the SDK defines GL_ADD, but the library does not list
-   the extension; glimp leaves textureEnvAddAvailable false for now. */
+/* texture_env_add: the SDK defines GL_ADD, but it does not work on PiStorm3D
+   29.3; glimp leaves textureEnvAddAvailable false. */
 #ifndef GL_ADD
 #define GL_ADD                          0x0104
 #endif

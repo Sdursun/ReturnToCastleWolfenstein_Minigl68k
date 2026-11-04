@@ -67,6 +67,28 @@ int vsnprintf(char *s, size_t size, const char *format, va_list args)
  * with -fno-builtin, or gcc would turn "(float)sqrt(x)" straight back
  * into a call to sqrtf, i.e. into infinite recursion.
  */
+/*
+ * rint rounds to the nearest integer, ties to even. The libnix of the newer
+ * toolchain (gcc 6.5.0b 20260819, built with -m68881) returned -2 for
+ * rint(-2.6), and Sys_SnapVector relies on it. Written with floor rather than
+ * the FPU's fint, which the 68040 has to emulate.
+ */
+double rint(double x)
+{
+	double r, diff;
+
+	/* 2^52 and above are whole already; this also passes on inf and NaN */
+	if (!(x > -4503599627370496.0 && x < 4503599627370496.0))
+		return x;
+
+	r = floor(x);
+	diff = x - r;
+	if (diff > 0.5 || (diff == 0.5 && fmod(r, 2.0) != 0.0))
+		r += 1.0;
+
+	return (r == 0.0 && x < 0.0) ? -0.0 : r;
+}
+
 float sqrtf(float x)          { return (float)__builtin_sqrt((double)x); }
 float sinf(float x)           { return (float)sin(x); }
 float cosf(float x)           { return (float)cos(x); }

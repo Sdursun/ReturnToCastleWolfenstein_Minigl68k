@@ -7,3 +7,5 @@ release/
 # PiStorm3D SDK: download it separately, see README.md
 PiStorm3D/
 PiStorm3D_*/
+# Claude project memory: synced through OneDrive, not part of the source
+/memory/

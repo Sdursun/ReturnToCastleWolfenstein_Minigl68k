@@ -111,6 +111,11 @@ void Sys_Quit()
 {
 	Amiga_Trace("Sys_Quit");
 	CL_Shutdown();
+	/* A second error during shutdown comes here through Sys_Error with
+	   CL_Shutdown still on the stack, which then returns at once ("recursive
+	   shutdown") and leaves the MiniGL screen open after the program has gone.
+	   Does nothing if the context is already closed. */
+	GLimp_Shutdown();
 	Amiga_FlushConsole();
 
 	if (quiterror[0])

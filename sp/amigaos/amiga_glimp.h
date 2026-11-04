@@ -17,6 +17,7 @@ extern struct Window *amiga_inputwindow;
 extern int mousevisible;
 
 void GLimp_Frame(void);
+void GLimp_Shutdown(void);
 
 /* amiga_main.c: prints a shutdown step with developer 1 (see there). */
 void Amiga_Trace(const char *msg);
@@ -31,6 +32,10 @@ void Amiga_FlushConsole(void);
    in mglSwitchDisplay, printed by GLimp_EndFrame. */
 extern int amiga_speeds;
 extern unsigned int amiga_drawMicros, amiga_drawCalls, amiga_drawIndexes;
+/* Largest draw of the frame, and draws above MiniGL's MGL_MAXVERTS (mgl/config.h),
+   beyond which OpenMoHAA lost geometry on PiStorm3D. */
+#define AMIGA_MGL_MAXVERTS 1024
+extern unsigned int amiga_drawMaxVerts, amiga_drawMaxIndexes, amiga_drawOverVerts;
 /* stage iterators (shading, draws included) and tessellation per surface
    type (tr_backend.c; arrays of SF_NUM_SURFACE_TYPES) */
 extern unsigned int amiga_shadeMicros;

@@ -190,6 +190,15 @@ static void R_DrawElements( int numIndexes, const glIndex_t *indexes ) {
 	amiga_drawMicros += Amiga_Micros() - start;
 	amiga_drawCalls++;
 	amiga_drawIndexes += numIndexes;
+	if ( (unsigned int)tess.numVertexes > amiga_drawMaxVerts ) {
+		amiga_drawMaxVerts = tess.numVertexes;
+	}
+	if ( (unsigned int)numIndexes > amiga_drawMaxIndexes ) {
+		amiga_drawMaxIndexes = numIndexes;
+	}
+	if ( tess.numVertexes > AMIGA_MGL_MAXVERTS ) {
+		amiga_drawOverVerts++;
+	}
 }
 
 #define R_DrawElements R_DrawElements_Timed

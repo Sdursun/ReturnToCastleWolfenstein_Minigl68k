@@ -1438,7 +1438,17 @@ extern shaderCommands_t tess;
 void RB_BeginSurface( shader_t *shader, int fogNum );
 void RB_EndSurface( void );
 void RB_CheckOverflow( int verts, int indexes );
-#define RB_CHECKOVERFLOW( v,i ) if ( tess.numVertexes + ( v ) >= SHADER_MAX_VERTEXES || tess.numIndexes + ( i ) >= SHADER_MAX_INDEXES ) {RB_CheckOverflow( v,i );}
+// How many vertexes to gather before flushing a batch. AmigaOS port: minigl.library
+// has a limit of 1024 vertexes per draw (MGL_MAXVERTS). Console text alone reaches
+// 2400 vertexes here, and on PiStorm3D 29.3 all of it disappeared. A single surface
+// above the limit still goes out whole.
+#ifdef __amigaos__
+#define TESS_MAX_VERTEXES 1000
+#else
+#define TESS_MAX_VERTEXES SHADER_MAX_VERTEXES
+#endif
+
+#define RB_CHECKOVERFLOW( v,i ) if ( tess.numVertexes + ( v ) >= TESS_MAX_VERTEXES || tess.numIndexes + ( i ) >= SHADER_MAX_INDEXES ) {RB_CheckOverflow( v,i );}
 
 void RB_StageIteratorGeneric( void );
 void RB_StageIteratorSky( void );

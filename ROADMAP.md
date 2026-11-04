@@ -43,26 +43,41 @@ ABI 5, checked for equality; GL tokens now carry OpenGL's values). 0.1 and
 
 ## Performance
 
-### GL_ADD texture environment (next, after 0.3)
+### GL_ADD texture environment (stays off: broken on PiStorm3D 29.3)
 
-The renderer can draw two-stage shaders whose second stage is additive
-(`blendFunc GL_ONE GL_ONE`, e.g. glow and environment layers) in one
-multitexture pass with `GL_ADD`, instead of two passes. It does this only
-when `glConfig.textureEnvAddAvailable` is set (`CollapseMultitexture` in
-`renderer/tr_shader.c`); `amiga_glimp.c` sets it to false.
+`tests/gladdtest.c` shows it. With two textures, PiStorm3D 29.3 multiplies when
+asked for `GL_ADD` (centre 130 52 19, corner 0 0 0, where adding gives 255 255 160
+and 130 60 40), on every draw path. It also ignores the vertex colour with two
+textures; one texture is correct. QuarkTex in WinUAE does both correctly.
 
-- 29.1 defines `GL_ADD` (0x0104) and its texture environment accepts it,
-  but the library does not list `GL_EXT_texture_env_add` in
-  `GL_EXTENSIONS`, so the engine would never find it by itself.
-- Plan: in `GLimp_Init`, set `textureEnvAddAvailable` when
-  `r_ext_texture_env_add` is 1 (the default) and the library is 29.1 or
-  newer, and print it in the `texenv add:` line.
-- Test: `r_speeds 1` before and after (shader passes per frame), fps in the
-  same spot, and a visual check of additive surfaces (lights, glowing
-  signs, fire): wrong brightness would show a broken `GL_ADD`.
-- Expected gain: unknown, probably small. It only affects shaders of that
-  shape, but each one saves a whole pass of 68k stage setup and a draw.
-  Also worth telling the PiStorm3D developers so the extension gets listed.
+`textureEnvAddAvailable` therefore stays false. There would be little to gain
+anyway: in `escape1`, `village1` and `dam`, `shaderlist` showed no `MT(a)` shader
+with it on (144-177 `MT(m)`), probably because lightmapped shaders collapse their
+first two stages with `GL_MODULATE` and only one collapse is done per shader. All
+the `MT(m)` collapses in those maps use `rgbGen identity`, so the vertex colour
+problem does not show there. Reported in `MINIGL_NOTES.md`.
+
+### Vertex limit per draw (done, verified on the A1200)
+
+MiniGL has `MGL_MAXVERTS` 1024, while the engine gathers up to 4000 vertexes per
+draw. Console text alone reached 2440 vertexes in one draw, and on PiStorm3D 29.3
+**all of it disappeared**. Batches now flush at `TESS_MAX_VERTEXES` (1000,
+`tr_local.h`): the console text is back, and the largest draw is 996 vertexes, at no
+measurable cost. `r_amigaspeeds 1` prints the largest draw of each frame and the
+number above the limit. A single surface with more vertexes than the limit is still
+sent whole.
+
+Open: the logo in the console background does not show in the area under the text.
+Cause not found, cosmetic.
+
+### Timer (next)
+
+`Sys_Milliseconds` goes through `gettimeofday`. Moving it to Emu68's ARM counter
+(about 1.7 µs a read, against about 20 µs for `GetSysTime` as measured by OpenMoHAA)
+may be a cheap gain. A hint: the same code built with the newer compiler, whose
+libnix has a 20 ms clock, took 22.7 ms a frame against 24.2 ms in `escape1`. That
+clock is too coarse to use (frame times of 20 or 40 ms), so it also blocks moving to
+that compiler until `Sys_Milliseconds` is replaced.
 
 ### Sampling profiler (next)
 

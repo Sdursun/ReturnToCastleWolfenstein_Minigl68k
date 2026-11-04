@@ -119,6 +119,33 @@ textures with mipmaps), the shared-library interface and `MiniGLOpen` /
 `MiniGLClose` all worked without trouble, and clean shutdown works once
 the pointer calls are avoided.
 
+## 8. Two textures on 29.3: GL_ADD multiplies, vertex colour ignored (confirmed, 2026-11-04)
+
+Measured on `minigl.library` 29.3 (build Oct 10 2026), Pi 4 PiStorm, by reading pixels
+back. `sp/amigaos/tests/gladdtest.c` is a small program that shows it. Unit 0 holds a flat
+colour (130, 60, 40), unit 1 a texture that is (255, 220, 120) in the centre and black
+in the corner:
+
+| Setup | Centre | Corner | Expected |
+|---|---|---|---|
+| unit 1 `GL_MODULATE` | 130 52 19 | 0 0 0 | correct |
+| unit 1 `GL_ADD` | 130 52 19 | 0 0 0 | 255 255 160, 130 60 40 |
+| unit 1 `GL_MODULATE`, grey (128) vertex colour | 130 52 19 | 0 0 0 | half of the first line |
+| unit 1 `GL_REPLACE` | 255 220 120 | 0 0 0 | correct |
+| one texture, grey vertex colour | 65 30 20 | 65 30 20 | correct |
+
+It is the same through `glBegin`/`glEnd`, `glDrawArrays`, and `glDrawElements` with or
+without `glLockArrays`, and with unit 0 set to `GL_REPLACE` or `GL_ADD`. No error is
+flagged. The same program gives the expected results on QuarkTex in WinUAE. We have not
+retested on 30.0, as we have no binary of it.
+
+A long `glBegin` block is also cut off silently at the default vertex buffer of 256 unless
+`mglChooseVertexBufferSize` is called, which may be worth a `GL_OUT_OF_MEMORY` or a note.
+
+And with `glLockArrays`, a `glDrawElements` of about 2400 vertexes (quads of console text,
+4 vertexes and 6 indexes each) drew nothing at all on 29.3. Flushing at 1000 vertexes fixed
+it, so this does not block us; the source we saw for 30.0 appears to handle it.
+
 ## Contact
 
 Repository: https://github.com/Sdursun/ReturnToCastleWolfenstein_Minigl68k

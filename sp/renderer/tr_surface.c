@@ -53,7 +53,7 @@ RB_CheckOverflow
 ==============
 */
 void RB_CheckOverflow( int verts, int indexes ) {
-	if ( tess.numVertexes + verts < SHADER_MAX_VERTEXES
+	if ( tess.numVertexes + verts < TESS_MAX_VERTEXES
 		 && tess.numIndexes + indexes < SHADER_MAX_INDEXES ) {
 		return;
 	}
@@ -1244,7 +1244,7 @@ void RB_SurfaceGrid( srfGridMesh_t *cv ) {
 	while ( used < lodHeight - 1 ) {
 		// see how many rows of both verts and indexes we can add without overflowing
 		do {
-			vrows = ( SHADER_MAX_VERTEXES - tess.numVertexes ) / lodWidth;
+			vrows = ( TESS_MAX_VERTEXES - tess.numVertexes ) / lodWidth;
 			irows = ( SHADER_MAX_INDEXES - tess.numIndexes ) / ( lodWidth * 6 );
 
 			// if we don't have enough space for at least one strip, flush the buffer

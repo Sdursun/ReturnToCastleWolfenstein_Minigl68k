@@ -31,6 +31,7 @@ int mousevisible;
 
 int amiga_speeds;
 unsigned int amiga_drawMicros, amiga_drawCalls, amiga_drawIndexes;
+unsigned int amiga_drawMaxVerts, amiga_drawMaxIndexes, amiga_drawOverVerts;
 unsigned int amiga_shadeMicros;
 unsigned int amiga_soundMicros;
 
@@ -89,7 +90,7 @@ static void GLimp_InitExtensions(void)
 	qglPNTrianglesiATI = 0;
 	qglPNTrianglesfATI = 0;
 
-	/* minigl.library has no gamma ramp, stencil buffer or GL_ADD. */
+	/* minigl.library has no gamma ramp or stencil buffer. */
 	glConfig.deviceSupportsGamma = qfalse;
 	glConfig.textureEnvAddAvailable = qfalse;
 	glConfig.textureCompression = TC_NONE;
@@ -119,6 +120,10 @@ static void GLimp_InitExtensions(void)
 	{
 		ri.Printf(PRINT_ALL, "...not using GL_ARB_multitexture\n");
 	}
+
+	/* textureEnvAddAvailable stays false. PiStorm3D 29.3 accepts GL_ADD on the
+	   second texture unit but multiplies instead (tests/gladdtest.c): what
+	   should add a glow would turn the wall around it black. */
 
 	if (r_ext_compiled_vertex_array->integer)
 	{
@@ -253,6 +258,14 @@ void GLimp_Shutdown(void)
 		   GLimp_Frame). The window goes away with the context anyway. */
 		amiga_inputwindow = 0;
 
+		/* A fatal error can arrive in the middle of a frame, with MiniGL
+		   holding its drawing lock; deleting the context in that state
+		   rebooted the machine in OpenMoHAA, on the same library. In automatic
+		   lock mode this releases the lock; between frames it only flips the
+		   page. Done on every shutdown so that the path is exercised. */
+		Amiga_Trace("mglSwitchDisplay");
+		mglSwitchDisplay();
+
 		Amiga_Trace("mglDeleteContext");
 		mglDeleteContext();
 		Amiga_Trace("mglDeleteContext done");
@@ -319,14 +332,16 @@ void GLimp_EndFrame(void)
 		/* shade: stage iterators without the draws; tessellation per surface
 		   type in ms (count), which may include shading when the tess
 		   buffer fills up mid-surface */
-		ri.Printf(PRINT_ALL, "amiga: draw %u.%u (%u calls, %u idx) shade %u.%u swap %u.%u sound %u.%u |%s\n",
+		ri.Printf(PRINT_ALL, "amiga: draw %u.%u (%u calls, %u idx, max %u verts %u idx, %u over %d) shade %u.%u swap %u.%u sound %u.%u |%s\n",
 			amiga_drawMicros / 1000, amiga_drawMicros / 100 % 10, amiga_drawCalls, amiga_drawIndexes,
+			amiga_drawMaxVerts, amiga_drawMaxIndexes, amiga_drawOverVerts, AMIGA_MGL_MAXVERTS,
 			shade / 1000, shade / 100 % 10,
 			start / 1000, start / 100 % 10,
 			amiga_soundMicros / 1000, amiga_soundMicros / 100 % 10, surfs);
 	}
 
 	amiga_drawMicros = amiga_drawCalls = amiga_drawIndexes = amiga_shadeMicros = amiga_soundMicros = 0;
+	amiga_drawMaxVerts = amiga_drawMaxIndexes = amiga_drawOverVerts = 0;
 	amiga_speeds = r_amigaspeeds->integer;
 }
 

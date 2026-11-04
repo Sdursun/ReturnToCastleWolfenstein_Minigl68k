@@ -106,6 +106,35 @@ int main(void)
 	check("sinf(pi/2)", sinf((float)(z + M_PI / 2)), 1.0);
 	check("cosf(0)", cosf((float)z), 1.0);
 
+	/* rint: ties go to even, and the sign stays on values rounded to zero */
+	check("rint(2.5)", rint(z + 2.5), 2.0);
+	check("rint(3.5)", rint(z + 3.5), 4.0);
+	check("rint(-2.5)", rint(z - 2.5), -2.0);
+	check("rint(-3.5)", rint(z - 3.5), -4.0);
+	check("rint(-0.4)", rint(z - 0.4), 0.0);
+	check("1/rint(-0.4) is negative", 1.0 / rint(z - 0.4) < 0 ? 1.0 : 0.0, 1.0);
+	check("rint(1e15+0.5)", rint(z + 1000000000000000.5), 1000000000000000.0);
+
+	/* the rest of amiga_libfix.c's float functions, and their double versions */
+	check("rintf(-2.6)", rintf((float)(z - 2.6)), -3.0);
+	check("floorf(-2.2)", floorf((float)(z - 2.2)), -3.0);
+	check("ceilf(-2.2)", ceilf((float)(z - 2.2)), -2.0);
+	check("ceil(-2.2)", ceil(z - 2.2), -2.0);
+	check("tanf(pi/4)", tanf((float)(z + M_PI / 4)), 1.0);
+	check("atanf(1)", atanf((float)(z + 1)), M_PI / 4);
+	check("atan2f(1,-1)", atan2f((float)(z + 1), -1.0f), 3 * M_PI / 4);
+	check("asinf(0.5)", asinf((float)(z + 0.5)), M_PI / 6);
+	check("acosf(0.5)", acosf((float)(z + 0.5)), M_PI / 3);
+	check("fabsf(-3)", fabsf((float)(z - 3)), 3.0);
+	check("fmodf(7.5,2)", fmodf((float)(z + 7.5), 2.0f), 1.5);
+	check("fmod(-7.5,2)", fmod(z - 7.5, 2), -1.5);
+	check("powf(2,10)", powf((float)(z + 2), 10.0f), 1024.0);
+	check("pow(2,-1)", pow(z + 2, -1), 0.5);
+	check("expf(0)", expf((float)z), 1.0);
+	check("logf(1)", logf((float)(z + 1)), 0.0);
+	check("log10(1000)", log10(z + 1000), 3.0);
+	check("log10f(100)", log10f((float)(z + 100)), 2.0);
+
 	printf("\nAngleVectors( 0 0 0 ): forward x1 y0 z0, right x0 y-1 z0, up x0 y0 z1\n");
 	angles[0] = angles[1] = angles[2] = (float)z;
 	AngleVectors(angles, f, r, u);
