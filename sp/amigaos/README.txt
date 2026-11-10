@@ -61,7 +61,8 @@ console):
                      0 turns it off, e.g. 400 sets 400 MB.
   r_mode 3           640x480 (the default); r_mode 4 is 800x600,
                      r_mode 13 is 1280x720, r_mode 14 is 1920x1080
-                     (a matching RTG screen mode is needed in fullscreen)
+                     (a matching RTG screen mode is needed in fullscreen);
+                     13 and 14 are also in the menu's Video Mode list
   r_fullscreen 0     windowed on the Workbench screen
   r_colorbits 16     16 (default), 24 or 32
   r_depthbits 24     16 or 24 (default)

@@ -5436,6 +5436,41 @@ qboolean ItemParse_cvarStrList( itemDef_t *item, int handle ) {
 	//return qfalse;
 }
 
+#ifdef __amigaos__
+/*
+AmigaOS port: the renderer has r_mode 13 (1280x720) and 14 (1920x1080), see
+renderer/tr_init.c, but the menus' Video Mode lists stop at mode 11. Add the two
+modes to any r_mode list as it is read, in the list's own style (the main menu
+writes 640*480, the in-game one 640x480), so the game's data stays untouched.
+*/
+static void Item_AddAmigaVideoModes( itemDef_t *item, multiDef_t *multiPtr ) {
+	qboolean star = qfalse;
+	int i;
+
+	if ( !item->cvar || Q_stricmp( item->cvar, "r_mode" ) ) {
+		return;
+	}
+
+	for ( i = 0; i < multiPtr->count; i++ ) {
+		if ( multiPtr->cvarValue[i] == 13 || multiPtr->cvarValue[i] == 14 ) {
+			return;     // a menu that offers them already
+		}
+		if ( strchr( multiPtr->cvarList[i], '*' ) ) {
+			star = qtrue;
+		}
+	}
+
+	if ( multiPtr->count + 2 >= MAX_MULTI_CVARS ) {
+		return;
+	}
+
+	multiPtr->cvarList[multiPtr->count] = star ? "1280*720 (720p)" : "1280x720 (720p)";
+	multiPtr->cvarValue[multiPtr->count++] = 13;
+	multiPtr->cvarList[multiPtr->count] = star ? "1920*1080 (1080p)" : "1920x1080 (1080p)";
+	multiPtr->cvarValue[multiPtr->count++] = 14;
+}
+#endif
+
 qboolean ItemParse_cvarFloatList( itemDef_t *item, int handle ) {
 	pc_token_t token;
 	multiDef_t *multiPtr;
@@ -5462,6 +5497,9 @@ qboolean ItemParse_cvarFloatList( itemDef_t *item, int handle ) {
 		}
 
 		if ( *token.string == '}' ) {
+#ifdef __amigaos__
+			Item_AddAmigaVideoModes( item, multiPtr );
+#endif
 			return qtrue;
 		}
 

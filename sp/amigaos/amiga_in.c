@@ -470,6 +470,24 @@ static void DecodeInputEvent(struct InputEvent *in)
 		mouse_x += in->ie_position.ie_xy.ie_x;
 		mouse_y += in->ie_position.ie_xy.ie_y;
 	}
+	else if (in->ie_Class == IECLASS_NEWPOINTERPOS)
+	{
+		/* An absolute position, from a tablet or a remote control tool such
+		   as AmigaBridge; the handler has put it in ie_xy. The game wants
+		   movement, so pass on the difference to the last one. */
+		static int havelast, lastx, lasty;
+		int x = in->ie_position.ie_xy.ie_x;
+		int y = in->ie_position.ie_xy.ie_y;
+
+		if (havelast)
+		{
+			mouse_x += x - lastx;
+			mouse_y += y - lasty;
+		}
+		lastx = x;
+		lasty = y;
+		havelast = 1;
+	}
 	else if (in->ie_Class == IECLASS_NEWMOUSE)
 	{
 		/* NewMouse drivers send the wheel both as this class and as
@@ -544,12 +562,29 @@ static struct InputEvent *myinputhandler(register struct InputEvent *moo __asm("
 
 	for (coin = moo; coin; coin = coin->ie_NextEvent)
 	{
-		if (coin->ie_Class == IECLASS_RAWMOUSE || coin->ie_Class == IECLASS_RAWKEY || coin->ie_Class == IECLASS_NEWMOUSE)
+		/* Absolute positions: only the two forms that carry screen pixels.
+		   For IESUBCLASS_PIXEL the position sits behind ie_EventAddress,
+		   valid only during this call, so it is copied into ie_xy below. */
+		if (coin->ie_Class == IECLASS_NEWPOINTERPOS
+		    && coin->ie_SubClass != IESUBCLASS_COMPATIBLE
+		    && (coin->ie_SubClass != IESUBCLASS_PIXEL || !coin->ie_EventAddress
+		        || (coin->ie_Qualifier & IEQUALIFIER_RELATIVEMOUSE)))
+			continue;
+
+		if (coin->ie_Class == IECLASS_RAWMOUSE || coin->ie_Class == IECLASS_RAWKEY || coin->ie_Class == IECLASS_NEWMOUSE
+		    || coin->ie_Class == IECLASS_NEWPOINTERPOS)
 		{
 			next = (imsghigh + 1) % MAXIMSGS;
 			if (next != imsglow)
 			{
 				CopyMem(coin, &imsgs[imsghigh], sizeof(imsgs[0]));
+				if (coin->ie_Class == IECLASS_NEWPOINTERPOS && coin->ie_SubClass == IESUBCLASS_PIXEL)
+				{
+					struct IEPointerPixel *pp = (struct IEPointerPixel *)coin->ie_EventAddress;
+
+					imsgs[imsghigh].ie_position.ie_xy.ie_x = pp->iepp_Position.X;
+					imsgs[imsghigh].ie_position.ie_xy.ie_y = pp->iepp_Position.Y;
+				}
 				imsghigh = next;
 			}
 

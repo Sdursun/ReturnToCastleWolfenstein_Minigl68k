@@ -230,8 +230,8 @@ files. In short:
   float functions and `rint` are replaced, and `printf` formatting goes through
   `stb_sprintf`. `-fno-builtin-sin/cos` keeps gcc from fusing `sin`+`cos`
   into libnix's broken `cexp`.
-- **`-fomit-frame-pointer` must not be used**: it broke the 3D view again
-  on hardware.
+- **`-fomit-frame-pointer` is not used**: it broke the 3D view on hardware
+  with an older compiler, and with the current one it gains nothing.
 - `botlib/l_script.c` is built with `-O1` because gcc 6.5 crashes on it
   with `-O2 -malign-int`.
 - `sp/amigaos/amiga_qgl.h` fills the gaps between the renderer and
