@@ -113,12 +113,13 @@ The mixing loop was simplified in 0.2. `r_amigaspeeds 1` prints
 `sound x.x` per frame; an A/B of `sndspeed 22050` against `11025` is still
 to be done. If sound costs under 1-2 ms, leave it.
 
-### `-fomit-frame-pointer` (later)
+### `-fomit-frame-pointer` (tried, not worth it)
 
-Turning it on broke the 3D view on hardware (the "walking on walls" look of
-the float-return bug). Finding why (probably a function relying on the
-frame pointer or a libnix routine) would give a few percent everywhere.
-`tests/mathtest.c` was not run with that build; start there.
+It broke the 3D view on hardware in September 2026 (the "walking on walls" look of
+the float-return bug), with the older compiler. Tried again on 2026-11-04 with gcc 6.5.0b
+20260819 on the A1200: `tests/mathtest.c` clean, the same start frame, the same position
+after a scripted walk in `escape1`. But no gain: 22.07 ms a frame with it, 21.82 ms
+without, three rounds each. It stays off. Why it broke before was not investigated.
 
 ### Small items (idea)
 

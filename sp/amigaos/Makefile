@@ -37,8 +37,8 @@ CPU     = -m68040 -m68881
 # cexp(), and libnix's cexp gives wrong results (tests/mathtest.c,
 # AngleVectors). -fno-builtin-cexp does not stop that, so sin and cos are
 # not treated as builtins at all; the 68040 has no fsin/fcos to inline.
-# No -fomit-frame-pointer: it broke the view again on hardware (2026-09-25),
-# likely the same float-return mismatch amiga_libfix.c works around.
+# No -fomit-frame-pointer: it broke the view on hardware with the older compiler
+# (2026-09-25). With this one it works, but gains nothing (2026-11-04, ROADMAP.md).
 BASEFLAGS = -O2 -noixemul $(CPU) -fsigned-char -fno-strict-aliasing -fno-math-errno \
             -fno-builtin-sin -fno-builtin-cos -fno-builtin-sinf -fno-builtin-cosf \
             -DNDEBUG -DBOTLIB -I$(MINIGL)/minigl-shared-library/include

@@ -136,15 +136,21 @@ in the corner:
 
 It is the same through `glBegin`/`glEnd`, `glDrawArrays`, and `glDrawElements` with or
 without `glLockArrays`, and with unit 0 set to `GL_REPLACE` or `GL_ADD`. No error is
-flagged. The same program gives the expected results on QuarkTex in WinUAE. We have not
-retested on 30.0, as we have no binary of it.
+flagged. The same program gives the expected results on QuarkTex in WinUAE.
+
+**Retested on 30.0 (build Oct 24 2026), 2026-11-10: unchanged.** `GL_ADD` still multiplies,
+and a grey vertex colour still leaves a two-texture draw at full brightness.
 
 A long `glBegin` block is also cut off silently at the default vertex buffer of 256 unless
 `mglChooseVertexBufferSize` is called, which may be worth a `GL_OUT_OF_MEMORY` or a note.
 
 And with `glLockArrays`, a `glDrawElements` of about 2400 vertexes (quads of console text,
-4 vertexes and 6 indexes each) drew nothing at all on 29.3. Flushing at 1000 vertexes fixed
-it, so this does not block us; the source we saw for 30.0 appears to handle it.
+4 vertexes and 6 indexes each) drew nothing at all on 29.3, and still draws nothing on 30.0.
+Flushing at 1000 vertexes fixed it, so this does not block us. The 30.0 source we were sent
+looks as if it splits such a draw (`DrawLockedRuns`), so the binary may not match that source.
+
+And thank you for 30.0: the same build of the game runs about 9% faster on it than on 29.3
+(`escape1`, 640x480, 24.4 to 22.2 ms a frame for the October build).
 
 ## Contact
 

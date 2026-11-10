@@ -6,6 +6,8 @@
  *   MODULATE       one pass, two textures: tex1 * tex2, which darkens
  *   GL_ADD         one pass, two textures: tex1 + tex2, which brightens
  *   TWO PASS       tex1, then tex2 drawn over it with blendFunc ONE ONE
+ *   GREY           MODULATE again, with a grey (half) vertex colour: should be
+ *                  half as bright (PiStorm3D 29.3 ignored the vertex colour)
  *
  * GL_ADD and TWO PASS should look the same; GL_ADD gets there with one draw
  * instead of two. The program compares those two panels pixel by pixel and
@@ -36,6 +38,7 @@
 #define SCREEN_H 480
 #define TEX_SIZE 64
 #define PANEL    180
+#define GREY     100
 
 static GLubyte tex1data[TEX_SIZE * TEX_SIZE * 4];
 static GLubyte tex2data[TEX_SIZE * TEX_SIZE * 4];
@@ -128,6 +131,8 @@ static const glyph_t font[] = {
 	{ 'U', { 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x0E } },
 	{ 'W', { 0x11, 0x11, 0x11, 0x15, 0x15, 0x1B, 0x11 } },
 	{ 'X', { 0x11, 0x11, 0x0A, 0x04, 0x0A, 0x11, 0x11 } },
+	{ 'R', { 0x1E, 0x11, 0x11, 0x1E, 0x14, 0x12, 0x11 } },
+	{ 'Y', { 0x11, 0x11, 0x0A, 0x04, 0x04, 0x04, 0x04 } },
 	{ '1', { 0x04, 0x0C, 0x04, 0x04, 0x04, 0x04, 0x0E } },
 	{ '2', { 0x0E, 0x11, 0x01, 0x02, 0x04, 0x08, 0x1F } },
 	{ '_', { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x1F } },
@@ -181,12 +186,12 @@ static void SingleQuad(int x, int y)
 	glEnd();
 }
 
-static void MultiQuad(int x, int y)
+static void MultiQuadSized(int x, int y, int size)
 {
 	static const float s[4] = { 0, 1, 1, 0 };
 	static const float t[4] = { 0, 0, 1, 1 };
-	const float px[4] = { (float)x, (float)(x + PANEL), (float)(x + PANEL), (float)x };
-	const float py[4] = { (float)y, (float)y, (float)(y + PANEL), (float)(y + PANEL) };
+	const float px[4] = { (float)x, (float)(x + size), (float)(x + size), (float)x };
+	const float py[4] = { (float)y, (float)y, (float)(y + size), (float)(y + size) };
 	int i;
 
 	glBegin(GL_QUADS);
@@ -209,7 +214,14 @@ static void DrawOneTexture(int x, int y, GLuint id)
 }
 
 /* One pass: both textures bound, env decides how unit 1 joins unit 0. */
+static void DrawCombinedSized(int x, int y, int size, GLint env);
+
 static void DrawCombined(int x, int y, GLint env)
+{
+	DrawCombinedSized(x, y, PANEL, env);
+}
+
+static void DrawCombinedSized(int x, int y, int size, GLint env)
 {
 	glActiveTextureARB(GL_TEXTURE0_ARB);
 	glEnable(GL_TEXTURE_2D);
@@ -221,7 +233,7 @@ static void DrawCombined(int x, int y, GLint env)
 	glBindTexture(GL_TEXTURE_2D, tex2);
 	glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, env);
 
-	MultiQuad(x, y);
+	MultiQuadSized(x, y, size);
 
 	glDisable(GL_TEXTURE_2D);
 	glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
@@ -245,7 +257,9 @@ int main(int argc, char **argv)
 	int seconds = argc > 1 ? atoi(argv[1]) : 15;
 	int frames, frame;
 	const int bottomy = 270, addx = 230, passx = 440;
+	const int greyx = 530, greyy = 120;
 	long maxdiff = -1, differing = 0;
+	GLubyte modc[4], greyc[4];
 	GLint units = 0;
 
 	if (!MiniGLOpen())
@@ -298,6 +312,8 @@ int main(int argc, char **argv)
 		DrawCombined(20, bottomy, GL_MODULATE);
 		DrawCombined(addx, bottomy, GL_ADD);
 		DrawTwoPass(passx, bottomy);
+		glColor4f(0.5f, 0.5f, 0.5f, 1);
+		DrawCombinedSized(greyx, greyy, GREY, GL_MODULATE);
 
 		glColor4f(1, 1, 1, 1);
 		DrawLabel(130, 12, "TEX 1");
@@ -305,6 +321,7 @@ int main(int argc, char **argv)
 		DrawLabel(20, bottomy - 18, "MODULATE");
 		DrawLabel(addx, bottomy - 18, "GL_ADD");
 		DrawLabel(passx, bottomy - 18, "TWO PASS");
+		DrawLabel(greyx, greyy - 18, "GREY");
 
 		/* Compare once, on the third frame, before it goes on display. */
 		if (frame == 2)
@@ -314,6 +331,8 @@ int main(int argc, char **argv)
 
 			glReadPixels(addx, y, PANEL, PANEL, GL_RGBA, GL_UNSIGNED_BYTE, addpixels);
 			glReadPixels(passx, y, PANEL, PANEL, GL_RGBA, GL_UNSIGNED_BYTE, passpixels);
+			glReadPixels(20 + PANEL / 2, SCREEN_H - 1 - (bottomy + PANEL / 2), 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, modc);
+			glReadPixels(greyx + GREY / 2, SCREEN_H - 1 - (greyy + GREY / 2), 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, greyc);
 
 			maxdiff = 0;
 			for (i = 0; i < PANEL * PANEL * 4; i++)
@@ -351,6 +370,10 @@ int main(int argc, char **argv)
 	else
 		printf("GL_ADD against TWO PASS: largest difference %ld of 255, %ld channels differ by more than 2\n",
 			maxdiff, differing);
+	if (maxdiff >= 0)
+		printf("Vertex colour with two textures: MODULATE centre %d %d %d, with grey colour %d %d %d (%s)\n",
+			modc[0], modc[1], modc[2], greyc[0], greyc[1], greyc[2],
+			greyc[0] * 2 < modc[0] + 10 && greyc[0] * 2 > modc[0] - 10 ? "half, correct" : "NOT half: colour ignored");
 
 	return 0;
 }
