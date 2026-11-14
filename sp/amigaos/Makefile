@@ -60,6 +60,26 @@ CXXFLAGS_EXTRA = -fno-exceptions -fno-rtti
 LIBS = -L$(MINIGL)/lib -lminigl -lm
 
 OBJDIR = objects
+EXE = rtcw-sp
+
+# "./build.sh VULKAN=1": the Vulkan experiment, rtcw-sp-vk. The renderer draws
+# through vulkan.library (VulkanV3D on the Pi's GPU, QuarkTex NG in WinUAE)
+# with the desktop GL 1.x it calls emulated in vk/amiga_vkgl.c, taken over
+# from the Jedi Outcast port. Everything that sees the renderer's GL header is
+# compiled again, into objects_vk. VULKANSDK is QuarkTex NG's vulkan-sdk
+# (include/, lib/libvulkan.a); build.sh mounts it there. It is not part of
+# this repository.
+VULKAN ?=
+VULKANSDK ?= /vulkan-sdk
+ifneq ($(VULKAN),)
+OBJDIR = objects_vk
+EXE = rtcw-sp-vk
+BASEFLAGS += -DAMIGA_VULKAN -I$(VULKANSDK)/include
+LIBS = -L$(VULKANSDK)/lib -lvulkan -lm
+GLIMP_OBJS = amigaos/vk/amiga_vkglimp.o amigaos/vk/amiga_vkgl.o
+else
+GLIMP_OBJS = amigaos/amiga_glimp.o
+endif
 
 ###########################################################################
 # Engine
@@ -203,7 +223,7 @@ ENGINE_OBJS = \
 	amigaos/amiga_net.o
 
 OS_OBJS = \
-	amigaos/amiga_glimp.o \
+	$(GLIMP_OBJS) \
 	amigaos/amiga_in.o \
 	amigaos/amiga_layout.o \
 	amigaos/amiga_libfix.o \
@@ -324,7 +344,7 @@ ui_DEFS     =
 
 ###########################################################################
 
-all: $(OBJDIR)/rtcw-sp
+all: $(OBJDIR)/$(EXE)
 
 ENGINE = $(addprefix $(OBJDIR)/engine/,$(ENGINE_OBJS))
 OS     = $(addprefix $(OBJDIR)/os/,$(OS_OBJS))
@@ -375,7 +395,7 @@ $(foreach m,qagame cgame ui,$(eval $(call MODULE_RULES,$(m))))
 
 MODULES = $(qagame_REN) $(cgame_REN) $(ui_REN)
 
-$(OBJDIR)/rtcw-sp: $(ENGINE) $(OS) $(MODULES)
+$(OBJDIR)/$(EXE): $(ENGINE) $(OS) $(MODULES)
 	$(CXX) $(CPU) -noixemul -o $@.db $(ENGINE) $(OS) $(MODULES) $(SWAPSTACK) $(LIBS)
 	$(STRIP) --strip-unneeded --remove-section=.comment $@.db -o $@
 

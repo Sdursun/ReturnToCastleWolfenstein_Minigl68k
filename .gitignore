@@ -2,6 +2,7 @@
 RTCW_Pistorm/
 # Build output
 sp/amigaos/objects/
+sp/amigaos/objects_vk/
 build.log
 release/
 # PiStorm3D SDK: download it separately, see README.md

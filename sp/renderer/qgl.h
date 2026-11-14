@@ -74,6 +74,11 @@ If you have questions concerning this license or the applicable additional terms
 #include <GL/gl.h>
 #include <proto/tinygl.h>
 
+#elif defined( __amigaos__ ) && defined( AMIGA_VULKAN )
+
+// AmigaOS port, Vulkan build: desktop GL 1.x emulated on vulkan.library.
+#include "../amigaos/vk/vk_gl.h"
+
 #elif defined(__amigaos__)
 
 #include <proto/minigl.h>
@@ -215,7 +220,7 @@ extern void ( APIENTRY * qglPNTrianglesfATI )( GLenum pname, GLfloat param );
 
 #include "qgl_linked.h"
 
-#if defined(__amigaos__)
+#if defined(__amigaos__) && !defined( AMIGA_VULKAN )
 #include "../amigaos/amiga_qgl.h"
 #endif
 
