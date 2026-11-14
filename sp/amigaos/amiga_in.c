@@ -479,6 +479,17 @@ static void DecodeInputEvent(struct InputEvent *in)
 		int x = in->ie_position.ie_xy.ie_x;
 		int y = in->ie_position.ie_xy.ie_y;
 
+		/* A button can come with the position, too (WinUAE through
+		   AmigaBridge); a bare move has IECODE_NOBUTTON. */
+		code = in->ie_Code & ~IECODE_UP_PREFIX;
+		down = !(in->ie_Code & IECODE_UP_PREFIX);
+		if (code == IECODE_LBUTTON)
+			QueueEvent(SE_KEY, K_MOUSE1, down);
+		else if (code == IECODE_RBUTTON)
+			QueueEvent(SE_KEY, K_MOUSE2, down);
+		else if (code == IECODE_MBUTTON)
+			QueueEvent(SE_KEY, K_MOUSE3, down);
+
 		if (havelast)
 		{
 			mouse_x += x - lastx;

@@ -10,3 +10,5 @@ PiStorm3D/
 PiStorm3D_*/
 # Claude project memory: synced through OneDrive, not part of the source
 /memory/
+# A1200 Vulkan test programs from the QuarkTex session, kept locally
+/vktests/
