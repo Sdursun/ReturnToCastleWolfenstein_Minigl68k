@@ -532,8 +532,12 @@ static int MakeTexture( vktex_t *t, int width, int height )
 	NEED( vkCreateImage( vk.device, &ii, NULL, &t->image ) );
 	memset( &req, 0, sizeof( req ) );
 	vkGetImageMemoryRequirements( vk.device, t->image, &req );
+#ifdef VKGL_IMAGE_LOG
 	{
-		/* DEBUG (A1200 server crash in vkBindImageMemory): the first images */
+		/* DEBUG (A1200 server crash in vkBindImageMemory, from the Jedi
+		   Outcast port): the first images' memory requirements, to
+		   vk_debug.txt in the current directory. Build with
+		   -DVKGL_IMAGE_LOG to turn it on. */
 		static int logged;
 
 		if ( logged < 12 ) {
@@ -551,6 +555,7 @@ static int MakeTexture( vktex_t *t, int width, int height )
 			}
 		}
 	}
+#endif
 	/* the server divides by the alignment when the memory is bound */
 	if ( !req.size || !req.alignment ) {
 		vkDestroyImage( vk.device, t->image, NULL );
