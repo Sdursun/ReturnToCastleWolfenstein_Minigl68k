@@ -37,6 +37,13 @@ unsigned int amiga_soundMicros;
 
 static cvar_t *r_amigaspeeds;
 
+/* r_vkmsaa 4: 4x multisampling. r_vkgamma 1: the game's gamma ramp (r_gamma,
+   r_overBrightBits) applied by the last pass, as a PC's hardware gamma
+   table would; without it the textures are brightened when loaded, as with
+   MiniGL. Both need vid_restart. */
+static cvar_t *r_vkmsaa;
+static cvar_t *r_vkgamma;
+
 static int glctx;
 static int libopen;
 
@@ -61,7 +68,7 @@ static void GLimp_InitExtensions(void)
 	qglPNTrianglesiATI = 0;
 	qglPNTrianglesfATI = 0;
 
-	glConfig.deviceSupportsGamma = qfalse;
+	glConfig.deviceSupportsGamma = r_vkgamma->integer ? qtrue : qfalse;
 	glConfig.textureEnvAddAvailable = qfalse;
 	glConfig.textureCompression = TC_NONE;
 	glConfig.anisotropicAvailable = qfalse;
@@ -146,6 +153,9 @@ void GLimp_Init(void)
 	ri.Printf(PRINT_ALL, "Initializing vulkan.library display\n");
 
 	r_amigaspeeds = ri.Cvar_Get("r_amigaspeeds", "0", 0);
+	r_vkmsaa = ri.Cvar_Get("r_vkmsaa", "4", CVAR_ARCHIVE | CVAR_LATCH);
+	r_vkgamma = ri.Cvar_Get("r_vkgamma", "1", CVAR_ARCHIVE | CVAR_LATCH);
+	VKGL_SetOptions(r_vkmsaa->integer);
 
 	if (!R_GetModeInfo(&glConfig.vidWidth, &glConfig.vidHeight, &glConfig.windowAspect, r_mode->integer))
 	{
@@ -181,6 +191,8 @@ void GLimp_Init(void)
 	r_fullscreen->modified = qfalse;
 
 	ri.Printf(PRINT_ALL, "...device: %s\n", VKGL_DeviceName());
+	ri.Printf(PRINT_ALL, "...%dx multisampling, gamma %s\n", VKGL_Samples(),
+		r_vkgamma->integer ? "in the last pass" : "in the textures");
 
 	/* No display lock here, unlike MiniGL: console output can go out as it
 	   comes. */
@@ -295,6 +307,8 @@ void GLimp_WakeRenderer(void *data)
 
 void GLimp_SetGamma(unsigned char red[256], unsigned char green[256], unsigned char blue[256])
 {
+	if (r_vkgamma && r_vkgamma->integer)
+		VKGL_SetGamma(red, green, blue);
 }
 
 void GLimp_Frame(void)

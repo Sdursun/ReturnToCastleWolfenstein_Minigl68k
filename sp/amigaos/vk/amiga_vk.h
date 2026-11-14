@@ -20,6 +20,13 @@ extern "C" {
 int VKGL_Open( void );
 void VKGL_Close( void );
 
+/* RTCW: before VKGL_CreateContext, 4 asks for 4x multisampling (if the GPU
+   has it; VKGL_Samples says what it got). The frame goes to the screen
+   through a gamma ramp, straight until VKGL_SetGamma gives one. */
+void VKGL_SetOptions( int samples );
+int VKGL_Samples( void );
+void VKGL_SetGamma( const unsigned char *red, const unsigned char *green, const unsigned char *blue );
+
 /* Opens the screen (fullscreen) or the window and everything Vulkan needs.
    The size the renderer draws at comes back in drawWidth/drawHeight: the
    server may ask for a smaller picture than the screen and scale it up

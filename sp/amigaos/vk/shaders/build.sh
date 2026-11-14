@@ -5,7 +5,7 @@
 set -eu
 cd "$(dirname "$(readlink -f "$0")")"
 mkdir -p ../gen
-for s in gl.vert gl0.frag gl1.frag gl2.frag; do
+for s in gl.vert gl0.frag gl1.frag gl2.frag post.vert post.frag; do
     n=vk_$(echo $s | tr . _)
     glslangValidator -V -I. --vn $n -o ../gen/$n.h $s > /tmp/$n.log || { cat /tmp/$n.log; exit 1; }
 done

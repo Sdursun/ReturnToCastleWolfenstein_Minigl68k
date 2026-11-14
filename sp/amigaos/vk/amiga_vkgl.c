@@ -51,6 +51,8 @@
 #include "gen/vk_gl0_frag.h"
 #include "gen/vk_gl1_frag.h"
 #include "gen/vk_gl2_frag.h"
+#include "gen/vk_post_vert.h"
+#include "gen/vk_post_frag.h"
 
 #ifndef GL_CLAMP_TO_EDGE
 #define GL_CLAMP_TO_EDGE 0x812F
@@ -180,11 +182,27 @@ static struct {
 	uint32_t imageCount;
 	VkImage images[MAX_IMAGES];
 	VkImageView views[MAX_IMAGES];
-	VkFramebuffer framebuffers[MAX_IMAGES];
 	VkImage depthImage;
 	VkDeviceMemory depthMemory;
 	VkImageView depthView;
 	VkRenderPass renderPass;
+
+	/* RTCW: the scene is drawn into sceneImage (through msImage when
+	   multisampled, resolved at the end of the pass), and a last pass puts it
+	   on the screen through the gamma ramp. */
+	VkSampleCountFlagBits samples;
+	VkImage sceneImage, msImage;
+	VkDeviceMemory sceneMemory, msMemory;
+	VkImageView sceneView, msView;
+	VkFramebuffer sceneFramebuffer;
+	VkRenderPass postPass;
+	VkFramebuffer postFramebuffers[MAX_IMAGES];
+	VkShaderModule postVert, postFrag;
+	VkPipeline postPipeline;
+	VkSampler postSampler;
+	VkDescriptorSet sceneSet, rampSet;
+	vktex_t ramp;
+	int rampDirty;
 
 	VkDescriptorSetLayout setLayout;
 	VkPipelineLayout layout;
@@ -226,6 +244,12 @@ static struct {
 } vk;
 
 static vktex_t textures[TEX_SLOTS];
+
+/* Asked for before the context is made (VKGL_SetOptions), and the game's
+   gamma ramp (VKGL_SetGamma): kept outside vk, which is cleared then. */
+static int optSamples = 1;
+static unsigned char rampData[256 * 4];
+static int rampSet;
 static vkvert_t imm[IMM_MAX];
 static int immCount;
 static GLenum immMode;
@@ -939,7 +963,7 @@ static VkPipeline MakePipeline( unsigned int key )
 	rs.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
 	rs.depthBiasEnable = K_OFFSET( key ) ? VK_TRUE : VK_FALSE;
 	rs.lineWidth = 1.0f;
-	ms.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+	ms.rasterizationSamples = vk.samples;
 
 	dss.depthTestEnable = K_ZTEST( key ) ? VK_TRUE : VK_FALSE;
 	dss.depthWriteEnable = K_ZMASK( key ) ? VK_TRUE : VK_FALSE;
@@ -1006,7 +1030,7 @@ static void BeginFrame( void )
 {
 	VkCommandBufferBeginInfo bi = { VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO };
 	VkRenderPassBeginInfo rbi = { VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO };
-	VkClearValue clear[2];
+	VkClearValue clear[3];
 	VkDeviceSize zero = 0;
 	VkCommandBuffer cmd;
 
@@ -1014,6 +1038,10 @@ static void BeginFrame( void )
 		return;
 	}
 	cmd = vk.cmd[vk.slot];
+	if ( vk.rampDirty && vk.ramp.image ) {
+		UploadPixels( &vk.ramp, 0, 0, 0, 256, 1, GL_RGBA, rampData );
+		vk.rampDirty = 0;
+	}
 	/* the frame that last used this slot's buffers */
 	vkWaitForFences( vk.device, 1, &vk.fence[vk.slot], VK_TRUE, 30000000000ull );
 	vkResetFences( vk.device, 1, &vk.fence[vk.slot] );
@@ -1027,9 +1055,9 @@ static void BeginFrame( void )
 	clear[0].color.float32[3] = 1.0f;
 	clear[1].depthStencil.depth = 1.0f;
 	rbi.renderPass = vk.renderPass;
-	rbi.framebuffer = vk.framebuffers[vk.imageIndex];
+	rbi.framebuffer = vk.sceneFramebuffer;
 	rbi.renderArea.extent = vk.extent;
-	rbi.clearValueCount = 2;
+	rbi.clearValueCount = vk.samples != VK_SAMPLE_COUNT_1_BIT ? 3 : 2;
 	rbi.pClearValues = clear;
 	vkCmdBeginRenderPass( cmd, &rbi, VK_SUBPASS_CONTENTS_INLINE );
 	vkCmdBindVertexBuffers( cmd, 0, 1, &vk.vertexBuffer[vk.slot], &zero );
@@ -1056,6 +1084,32 @@ void VKGL_SwapBuffers( void )
 	BeginFrame();
 	cmd = vk.cmd[vk.slot];
 	vkCmdEndRenderPass( cmd );
+	{
+		/* the scene onto the screen, through the gamma ramp */
+		VkRenderPassBeginInfo rbi = { VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO };
+		VkViewport v;
+		VkRect2D r;
+		VkDescriptorSet sets[2];
+
+		rbi.renderPass = vk.postPass;
+		rbi.framebuffer = vk.postFramebuffers[vk.imageIndex];
+		rbi.renderArea.extent = vk.extent;
+		vkCmdBeginRenderPass( cmd, &rbi, VK_SUBPASS_CONTENTS_INLINE );
+		vkCmdBindPipeline( cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, vk.postPipeline );
+		memset( &v, 0, sizeof( v ) );
+		v.width = (float)vk.extent.width;
+		v.height = (float)vk.extent.height;
+		v.maxDepth = 1.0f;
+		vkCmdSetViewport( cmd, 0, 1, &v );
+		memset( &r, 0, sizeof( r ) );
+		r.extent = vk.extent;
+		vkCmdSetScissor( cmd, 0, 1, &r );
+		sets[0] = vk.sceneSet;
+		sets[1] = vk.rampSet;
+		vkCmdBindDescriptorSets( cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, vk.layout, 0, 2, sets, 0, NULL );
+		vkCmdDraw( cmd, 3, 1, 0, 0 );
+		vkCmdEndRenderPass( cmd );
+	}
 	vkEndCommandBuffer( cmd );
 
 	/* the textures this frame draws with */
@@ -1897,6 +1951,32 @@ void vk_glReadPixels( GLint x, GLint y, GLsizei width, GLsizei height, GLenum fo
 
 /* ---- the display side, for amiga_vkglimp.cpp ---------------------------- */
 
+/* Before VKGL_CreateContext: 4 for 4x multisampling where the GPU has it. */
+void VKGL_SetOptions( int samples )
+{
+	optSamples = samples;
+}
+
+/* The game's gamma ramp (GLimp_SetGamma), used by the last pass. */
+void VKGL_SetGamma( const unsigned char *red, const unsigned char *green, const unsigned char *blue )
+{
+	int i;
+
+	for ( i = 0; i < 256; i++ ) {
+		rampData[i * 4 + 0] = red[i];
+		rampData[i * 4 + 1] = green[i];
+		rampData[i * 4 + 2] = blue[i];
+		rampData[i * 4 + 3] = 255;
+	}
+	rampSet = 1;
+	vk.rampDirty = 1;
+}
+
+int VKGL_Samples( void )
+{
+	return vk.samples == VK_SAMPLE_COUNT_4_BIT ? 4 : 1;
+}
+
 int VKGL_Open( void )
 {
 	return VulkanOpen() ? 1 : 0;
@@ -1996,52 +2076,254 @@ static int MakeModule( const uint32_t *code, size_t size, VkShaderModule *module
 	return 1;
 }
 
+/* The scene pass: into sceneImage, or into msImage resolved to sceneImage,
+   with the depth buffer; sceneImage is left for the last pass to read. */
 static int MakeRenderPass( void )
 {
-	VkAttachmentDescription ad[2];
+	int ms = vk.samples != VK_SAMPLE_COUNT_1_BIT;
+	VkAttachmentDescription ad[3];
 	VkAttachmentReference colorRef = { 0, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL };
 	VkAttachmentReference depthRef = { 1, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL };
+	VkAttachmentReference resolveRef = { 2, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL };
 	VkSubpassDescription sd;
-	VkSubpassDependency dep;
+	VkSubpassDependency dep[2];
 	VkRenderPassCreateInfo ri = { VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO };
 
 	memset( ad, 0, sizeof( ad ) );
 	ad[0].format = vk.colorFormat;
-	ad[0].samples = VK_SAMPLE_COUNT_1_BIT;
+	ad[0].samples = vk.samples;
 	ad[0].loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-	ad[0].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+	ad[0].storeOp = ms ? VK_ATTACHMENT_STORE_OP_DONT_CARE : VK_ATTACHMENT_STORE_OP_STORE;
 	ad[0].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
 	ad[0].stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
 	ad[0].initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-	ad[0].finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+	ad[0].finalLayout = ms ? VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL : VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 	ad[1].format = vk.depthFormat;
-	ad[1].samples = VK_SAMPLE_COUNT_1_BIT;
+	ad[1].samples = vk.samples;
 	ad[1].loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
 	ad[1].storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
 	ad[1].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
 	ad[1].stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
 	ad[1].initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 	ad[1].finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+	ad[2].format = vk.colorFormat;
+	ad[2].samples = VK_SAMPLE_COUNT_1_BIT;
+	ad[2].loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+	ad[2].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+	ad[2].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+	ad[2].stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+	ad[2].initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+	ad[2].finalLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 	memset( &sd, 0, sizeof( sd ) );
 	sd.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
 	sd.colorAttachmentCount = 1;
 	sd.pColorAttachments = &colorRef;
 	sd.pDepthStencilAttachment = &depthRef;
-	memset( &dep, 0, sizeof( dep ) );
-	dep.srcSubpass = VK_SUBPASS_EXTERNAL;
-	dep.dstSubpass = 0;
-	dep.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
-	dep.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
-	dep.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-	ri.attachmentCount = 2;
+	if ( ms ) {
+		sd.pResolveAttachments = &resolveRef;
+	}
+	memset( dep, 0, sizeof( dep ) );
+	/* the last pass of the frame before may still be reading sceneImage */
+	dep[0].srcSubpass = VK_SUBPASS_EXTERNAL;
+	dep[0].dstSubpass = 0;
+	dep[0].srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT
+		| VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+	dep[0].dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+	dep[0].dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+	/* and the last pass reads what this one wrote */
+	dep[1].srcSubpass = 0;
+	dep[1].dstSubpass = VK_SUBPASS_EXTERNAL;
+	dep[1].srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+	dep[1].srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+	dep[1].dstStageMask = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+	dep[1].dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+	ri.attachmentCount = ms ? 3 : 2;
+	ri.pAttachments = ad;
+	ri.subpassCount = 1;
+	ri.pSubpasses = &sd;
+	ri.dependencyCount = 2;
+	ri.pDependencies = dep;
+	NEED( vkCreateRenderPass( vk.device, &ri, NULL, &vk.renderPass ) );
+
+	/* the last pass: the swapchain image, all of it written */
+	memset( ad, 0, sizeof( ad ) );
+	ad[0].format = vk.colorFormat;
+	ad[0].samples = VK_SAMPLE_COUNT_1_BIT;
+	ad[0].loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+	ad[0].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+	ad[0].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+	ad[0].stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+	ad[0].initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+	ad[0].finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+	memset( &sd, 0, sizeof( sd ) );
+	sd.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+	sd.colorAttachmentCount = 1;
+	sd.pColorAttachments = &colorRef;
+	memset( dep, 0, sizeof( dep ) );
+	dep[0].srcSubpass = VK_SUBPASS_EXTERNAL;
+	dep[0].dstSubpass = 0;
+	dep[0].srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+	dep[0].dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+	dep[0].dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+	ri.attachmentCount = 1;
 	ri.pAttachments = ad;
 	ri.subpassCount = 1;
 	ri.pSubpasses = &sd;
 	ri.dependencyCount = 1;
-	ri.pDependencies = &dep;
-	NEED( vkCreateRenderPass( vk.device, &ri, NULL, &vk.renderPass ) );
+	ri.pDependencies = dep;
+	NEED( vkCreateRenderPass( vk.device, &ri, NULL, &vk.postPass ) );
 	return 1;
 }
+
+/* An image the size of the screen to draw into. */
+static int MakeTarget( VkFormat format, VkSampleCountFlagBits samples, VkImageUsageFlags usage,
+	VkImageAspectFlags aspect, VkImage *image, VkDeviceMemory *memory, VkImageView *view )
+{
+	VkImageCreateInfo ii = { VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO };
+	VkMemoryAllocateInfo ai = { VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO };
+	VkImageViewCreateInfo vi = { VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO };
+	VkMemoryRequirements req;
+
+	ii.imageType = VK_IMAGE_TYPE_2D;
+	ii.format = format;
+	ii.extent.width = vk.extent.width;
+	ii.extent.height = vk.extent.height;
+	ii.extent.depth = 1;
+	ii.mipLevels = 1;
+	ii.arrayLayers = 1;
+	ii.samples = samples;
+	ii.tiling = VK_IMAGE_TILING_OPTIMAL;
+	ii.usage = usage;
+	NEED( vkCreateImage( vk.device, &ii, NULL, image ) );
+	memset( &req, 0, sizeof( req ) );
+	vkGetImageMemoryRequirements( vk.device, *image, &req );
+	if ( !req.size || !req.alignment ) {
+		return Fail( "vkGetImageMemoryRequirements", VK_ERROR_UNKNOWN );
+	}
+	ai.allocationSize = req.size;
+	ai.memoryTypeIndex = MemoryType( req.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT );
+	NEED( vkAllocateMemory( vk.device, &ai, NULL, memory ) );
+	NEED( vkBindImageMemory( vk.device, *image, *memory, 0 ) );
+	vi.image = *image;
+	vi.viewType = VK_IMAGE_VIEW_TYPE_2D;
+	vi.format = format;
+	vi.subresourceRange.aspectMask = aspect;
+	vi.subresourceRange.levelCount = 1;
+	vi.subresourceRange.layerCount = 1;
+	NEED( vkCreateImageView( vk.device, &vi, NULL, view ) );
+	return 1;
+}
+
+/* The last pass: its pipeline, sampler, and the two descriptor sets. */
+static int MakePost( void )
+{
+	VkPipelineShaderStageCreateInfo stages[2];
+	VkPipelineVertexInputStateCreateInfo vi = { VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO };
+	VkPipelineInputAssemblyStateCreateInfo ia = { VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO };
+	VkPipelineViewportStateCreateInfo vp = { VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO };
+	VkPipelineRasterizationStateCreateInfo rs = { VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO };
+	VkPipelineMultisampleStateCreateInfo ms = { VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO };
+	VkPipelineDepthStencilStateCreateInfo dss = { VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO };
+	VkPipelineColorBlendAttachmentState att;
+	VkPipelineColorBlendStateCreateInfo cb = { VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO };
+	VkDynamicState dyn[2] = { VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR };
+	VkPipelineDynamicStateCreateInfo ds = { VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO };
+	VkGraphicsPipelineCreateInfo pi = { VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO };
+	VkSamplerCreateInfo si = { VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO };
+	VkDescriptorSetAllocateInfo dai = { VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO };
+	VkDescriptorSetLayout layouts[2];
+	VkDescriptorSet sets[2];
+	VkDescriptorImageInfo info[2];
+	VkWriteDescriptorSet w[2];
+	int i;
+
+	if ( !MakeModule( vk_post_vert, sizeof( vk_post_vert ), &vk.postVert )
+		|| !MakeModule( vk_post_frag, sizeof( vk_post_frag ), &vk.postFrag ) ) {
+		return 0;
+	}
+
+	/* the ramp: 256 x 1, one entry per channel value; straight until the
+	   game sets one */
+	if ( !rampSet ) {
+		for ( i = 0; i < 256; i++ ) {
+			rampData[i * 4 + 0] = rampData[i * 4 + 1] = rampData[i * 4 + 2] = (unsigned char)i;
+			rampData[i * 4 + 3] = 255;
+		}
+		rampSet = 1;
+	}
+	vk.ramp.minFilter = vk.ramp.magFilter = GL_NEAREST;
+	vk.ramp.wrapS = vk.ramp.wrapT = GL_CLAMP;
+	if ( !MakeTexture( &vk.ramp, 256, 1 ) ) {
+		return 0;
+	}
+	UploadPixels( &vk.ramp, 0, 0, 0, 256, 1, GL_RGBA, rampData );
+	FlushUploads();
+
+	si.magFilter = si.minFilter = VK_FILTER_NEAREST;
+	si.mipmapMode = VK_SAMPLER_MIPMAP_MODE_NEAREST;
+	si.addressModeU = si.addressModeV = si.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+	si.maxLod = 0.25f;
+	si.maxAnisotropy = 1.0f;
+	NEED( vkCreateSampler( vk.device, &si, NULL, &vk.postSampler ) );
+
+	layouts[0] = layouts[1] = vk.setLayout;
+	dai.descriptorPool = vk.pool;
+	dai.descriptorSetCount = 2;
+	dai.pSetLayouts = layouts;
+	NEED( vkAllocateDescriptorSets( vk.device, &dai, sets ) );
+	vk.sceneSet = sets[0];
+	vk.rampSet = sets[1];
+	memset( w, 0, sizeof( w ) );
+	for ( i = 0; i < 2; i++ ) {
+		info[i].sampler = vk.postSampler;
+		info[i].imageView = i ? vk.ramp.view : vk.sceneView;
+		info[i].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+		w[i].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+		w[i].dstSet = sets[i];
+		w[i].descriptorCount = 1;
+		w[i].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+		w[i].pImageInfo = &info[i];
+	}
+	vkUpdateDescriptorSets( vk.device, 2, w, 0, NULL );
+
+	memset( stages, 0, sizeof( stages ) );
+	stages[0].sType = stages[1].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+	stages[0].stage = VK_SHADER_STAGE_VERTEX_BIT;
+	stages[0].module = vk.postVert;
+	stages[0].pName = "main";
+	stages[1].stage = VK_SHADER_STAGE_FRAGMENT_BIT;
+	stages[1].module = vk.postFrag;
+	stages[1].pName = "main";
+	ia.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+	vp.viewportCount = 1;
+	vp.scissorCount = 1;
+	rs.polygonMode = VK_POLYGON_MODE_FILL;
+	rs.cullMode = VK_CULL_MODE_NONE;
+	rs.lineWidth = 1.0f;
+	ms.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+	dss.maxDepthBounds = 1.0f;
+	memset( &att, 0, sizeof( att ) );
+	att.colorWriteMask = 0xF;
+	cb.attachmentCount = 1;
+	cb.pAttachments = &att;
+	ds.dynamicStateCount = 2;
+	ds.pDynamicStates = dyn;
+	pi.stageCount = 2;
+	pi.pStages = stages;
+	pi.pVertexInputState = &vi;
+	pi.pInputAssemblyState = &ia;
+	pi.pViewportState = &vp;
+	pi.pRasterizationState = &rs;
+	pi.pMultisampleState = &ms;
+	pi.pDepthStencilState = &dss;
+	pi.pColorBlendState = &cb;
+	pi.pDynamicState = &ds;
+	pi.layout = vk.layout;
+	pi.renderPass = vk.postPass;
+	NEED( vkCreateGraphicsPipelines( vk.device, VK_NULL_HANDLE, 1, &pi, NULL, &vk.postPipeline ) );
+	return 1;
+}
+
 
 static int MakeDevice( int vsync )
 {
@@ -2069,6 +2351,11 @@ static int MakeDevice( int vsync )
 		vkGetPhysicalDeviceMemoryProperties( vk.gpu, &vk.memoryProperties );
 		vkGetPhysicalDeviceProperties( vk.gpu, &props );
 		strncpy( vk.deviceName, props.deviceName, sizeof( vk.deviceName ) - 1 );
+		vk.samples = VK_SAMPLE_COUNT_1_BIT;
+		if ( optSamples >= 4 && ( props.limits.framebufferColorSampleCounts & VK_SAMPLE_COUNT_4_BIT )
+			&& ( props.limits.framebufferDepthSampleCounts & VK_SAMPLE_COUNT_4_BIT ) ) {
+			vk.samples = VK_SAMPLE_COUNT_4_BIT;
+		}
 	}
 	{
 		float priority = 1.0f;
@@ -2145,7 +2432,7 @@ static int MakeDevice( int vsync )
 		ii.extent.depth = 1;
 		ii.mipLevels = 1;
 		ii.arrayLayers = 1;
-		ii.samples = VK_SAMPLE_COUNT_1_BIT;
+		ii.samples = vk.samples;
 		ii.tiling = VK_IMAGE_TILING_OPTIMAL;
 		ii.usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
 		NEED( vkCreateImage( vk.device, &ii, NULL, &vk.depthImage ) );
@@ -2162,8 +2449,39 @@ static int MakeDevice( int vsync )
 		vi.subresourceRange.layerCount = 1;
 		NEED( vkCreateImageView( vk.device, &vi, NULL, &vk.depthView ) );
 	}
+	if ( !MakeTarget( vk.colorFormat, VK_SAMPLE_COUNT_1_BIT,
+			VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_IMAGE_ASPECT_COLOR_BIT,
+			&vk.sceneImage, &vk.sceneMemory, &vk.sceneView ) ) {
+		return 0;
+	}
+	if ( vk.samples != VK_SAMPLE_COUNT_1_BIT && !MakeTarget( vk.colorFormat, vk.samples,
+			VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT, VK_IMAGE_ASPECT_COLOR_BIT,
+			&vk.msImage, &vk.msMemory, &vk.msView ) ) {
+		return 0;
+	}
 	if ( !MakeRenderPass() ) {
 		return 0;
+	}
+	{
+		VkFramebufferCreateInfo fbi = { VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO };
+		VkImageView all[3];
+
+		if ( vk.samples != VK_SAMPLE_COUNT_1_BIT ) {
+			all[0] = vk.msView;
+			all[1] = vk.depthView;
+			all[2] = vk.sceneView;
+			fbi.attachmentCount = 3;
+		} else {
+			all[0] = vk.sceneView;
+			all[1] = vk.depthView;
+			fbi.attachmentCount = 2;
+		}
+		fbi.renderPass = vk.renderPass;
+		fbi.pAttachments = all;
+		fbi.width = vk.extent.width;
+		fbi.height = vk.extent.height;
+		fbi.layers = 1;
+		NEED( vkCreateFramebuffer( vk.device, &fbi, NULL, &vk.sceneFramebuffer ) );
 	}
 	for ( i = 0; i < vk.imageCount; i++ ) {
 		VkImageViewCreateInfo vi = { VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO };
@@ -2178,14 +2496,13 @@ static int MakeDevice( int vsync )
 		vi.subresourceRange.layerCount = 1;
 		NEED( vkCreateImageView( vk.device, &vi, NULL, &vk.views[i] ) );
 		both[0] = vk.views[i];
-		both[1] = vk.depthView;
-		fbi.renderPass = vk.renderPass;
-		fbi.attachmentCount = 2;
+		fbi.renderPass = vk.postPass;
+		fbi.attachmentCount = 1;
 		fbi.pAttachments = both;
 		fbi.width = vk.extent.width;
 		fbi.height = vk.extent.height;
 		fbi.layers = 1;
-		NEED( vkCreateFramebuffer( vk.device, &fbi, NULL, &vk.framebuffers[i] ) );
+		NEED( vkCreateFramebuffer( vk.device, &fbi, NULL, &vk.postFramebuffers[i] ) );
 	}
 	{
 		/* a texture is a descriptor set of one image, bound as set 0 or 1 */
@@ -2193,7 +2510,7 @@ static int MakeDevice( int vsync )
 		VkDescriptorSetLayoutCreateInfo li = { VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO };
 		VkPipelineLayoutCreateInfo pli = { VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO };
 		VkPushConstantRange push = { VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof( vkpush_t ) };
-		VkDescriptorPoolSize size = { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, TEX_SLOTS + 1 };
+		VkDescriptorPoolSize size = { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, TEX_SLOTS + 3 };
 		VkDescriptorPoolCreateInfo dpi = { VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO };
 		VkDescriptorSetLayout both[2];
 
@@ -2206,7 +2523,7 @@ static int MakeDevice( int vsync )
 		pli.pushConstantRangeCount = 1;
 		pli.pPushConstantRanges = &push;
 		NEED( vkCreatePipelineLayout( vk.device, &pli, NULL, &vk.layout ) );
-		dpi.maxSets = TEX_SLOTS + 1;
+		dpi.maxSets = TEX_SLOTS + 3;
 		dpi.poolSizeCount = 1;
 		dpi.pPoolSizes = &size;
 		NEED( vkCreateDescriptorPool( vk.device, &dpi, NULL, &vk.pool ) );
@@ -2267,6 +2584,9 @@ static int MakeDevice( int vsync )
 		}
 		UploadPixels( &vk.white, 0, 0, 0, 1, 1, GL_RGBA, white );
 		FlushUploads();
+	}
+	if ( !MakePost() ) {
+		return 0;
 	}
 	return 1;
 }
@@ -2402,9 +2722,30 @@ void VKGL_DestroyContext( void )
 		if ( vk.layout ) vkDestroyPipelineLayout( vk.device, vk.layout, NULL );
 		if ( vk.setLayout ) vkDestroyDescriptorSetLayout( vk.device, vk.setLayout, NULL );
 		for ( i = 0; i < (int)vk.imageCount; i++ ) {
-			if ( vk.framebuffers[i] ) vkDestroyFramebuffer( vk.device, vk.framebuffers[i], NULL );
+			if ( vk.postFramebuffers[i] ) vkDestroyFramebuffer( vk.device, vk.postFramebuffers[i], NULL );
 			if ( vk.views[i] ) vkDestroyImageView( vk.device, vk.views[i], NULL );
 		}
+		if ( vk.postPipeline ) vkDestroyPipeline( vk.device, vk.postPipeline, NULL );
+		if ( vk.postSampler ) vkDestroySampler( vk.device, vk.postSampler, NULL );
+		if ( vk.postVert ) vkDestroyShaderModule( vk.device, vk.postVert, NULL );
+		if ( vk.postFrag ) vkDestroyShaderModule( vk.device, vk.postFrag, NULL );
+		if ( vk.ramp.image ) {
+			vkDestroyImageView( vk.device, vk.ramp.view, NULL );
+			vkDestroyImage( vk.device, vk.ramp.image, NULL );
+			vkFreeMemory( vk.device, vk.ramp.memory, NULL );
+		}
+		if ( vk.sceneFramebuffer ) vkDestroyFramebuffer( vk.device, vk.sceneFramebuffer, NULL );
+		if ( vk.sceneView ) vkDestroyImageView( vk.device, vk.sceneView, NULL );
+		if ( vk.sceneImage ) {
+			vkDestroyImage( vk.device, vk.sceneImage, NULL );
+			vkFreeMemory( vk.device, vk.sceneMemory, NULL );
+		}
+		if ( vk.msView ) vkDestroyImageView( vk.device, vk.msView, NULL );
+		if ( vk.msImage ) {
+			vkDestroyImage( vk.device, vk.msImage, NULL );
+			vkFreeMemory( vk.device, vk.msMemory, NULL );
+		}
+		if ( vk.postPass ) vkDestroyRenderPass( vk.device, vk.postPass, NULL );
 		if ( vk.renderPass ) vkDestroyRenderPass( vk.device, vk.renderPass, NULL );
 		if ( vk.depthView ) vkDestroyImageView( vk.device, vk.depthView, NULL );
 		if ( vk.depthImage ) {
