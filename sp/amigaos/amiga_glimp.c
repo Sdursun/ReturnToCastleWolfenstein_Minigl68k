@@ -186,9 +186,9 @@ void GLimp_Init(void)
 
 	if (!R_GetModeInfo(&glConfig.vidWidth, &glConfig.vidHeight, &glConfig.windowAspect, r_mode->integer))
 	{
-		/* r_mode -2 (desktop size) and bad values fall back to 640x480. */
-		glConfig.vidWidth = 640;
-		glConfig.vidHeight = 480;
+		/* r_mode -2 (desktop size) and bad values fall back to 1024x768. */
+		glConfig.vidWidth = 1024;
+		glConfig.vidHeight = 768;
 		glConfig.windowAspect = 1.0f;
 	}
 

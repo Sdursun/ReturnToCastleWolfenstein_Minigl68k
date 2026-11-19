@@ -34,6 +34,7 @@ Tested on AmigaOS 3.2, PiStorm with Raspberry Pi 4 (Emu68), PiStorm3D
   |---|---:|
   | 640x480 (`r_mode 3`) | 47 |
   | 800x600 (`r_mode 4`) | 42 |
+  | 1024x768 (`r_mode 6`, the default) | 36 |
   | 1280x720 (`r_mode 13`) | 33 |
   | 1920x1080 (`r_mode 14`) | 19 |
 
@@ -58,6 +59,9 @@ Tested on AmigaOS 3.2, PiStorm with Raspberry Pi 4 (Emu68), PiStorm3D
   `escape1`).
 - 1280x720 and 1920x1080 can be picked in the menu (Options > System >
   Video Mode).
+- The default mode is 1024x768 (`r_mode 6`). `amiga.cfg` no longer sets
+  `r_mode`, `r_vertexlight 1` or `r_picmip 1`: lightmaps are on and
+  textures full size unless you change them.
 - Fixed: console text disappeared (draws of more than about 1,000
   vertexes vanish on PiStorm3D, they are now split).
 - Fixed: starting with `+map` / `+devmap` stopped on the logo, because the
@@ -326,13 +330,14 @@ bir programcının bu kod tabanıyla ve PiStorm3D ile harikalar
 yaratabileceğine inanıyorum.
 
 Durum (minigl.library 30.0, ilk bölüm, dururken): 640x480'de 47 FPS,
-800x600'de 42, 1280x720'de 33, 1920x1080'de 19. Hareket ve çatışmada daha
+800x600'de 42, 1024x768'de (varsayılan) 36, 1280x720'de 33, 1920x1080'de 19. Hareket ve çatışmada daha
 düşük; `r_vertexlight 1` yaklaşık 10 FPS daha kazandırır.
 
 0.4 sürümündeki yenilikler: donanımda (minigl 29.3 ve 30.0) denendi;
 640x480'de yaklaşık 41 → 47 FPS (yeni derleyici ve FPU kodu, Emu68 saati,
 minigl 30.0); bölüm yüklemesi yaklaşık 4 saniye kısaldı; 1280x720 ve
-1920x1080 menüden seçilebiliyor; kaybolan konsol yazıları, `+map` ile
+1920x1080 menüden seçilebiliyor; varsayılan çözünürlük 1024x768 ve
+amiga.cfg artık r_mode, r_vertexlight ve r_picmip ayarlamıyor; kaybolan konsol yazıları, `+map` ile
 açılışta logoda kalma ve ölümcül hatadan sonra açık kalan MiniGL ekranı
 düzeltildi.
 

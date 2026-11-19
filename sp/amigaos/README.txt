@@ -4,8 +4,9 @@ Return to Castle Wolfenstein single player for AmigaOS 3.x
 A 68k port based on the MorphOS port, rendering through minigl.library.
 Written for PiStorm3D (Raspberry Pi 4 / CM4 PiStorm, Emu68). Tested on
 AmigaOS 3.2 with PiStorm3D minigl.library 30.0. In the first level,
-standing: 47 fps at 640x480, 42 at 800x600, 33 at 1280x720, 19 at
-1920x1080; slower while moving and fighting. r_vertexlight 1 adds about 10.
+standing: 47 fps at 640x480, 42 at 800x600, 36 at 1024x768 (the
+default), 33 at 1280x720, 19 at 1920x1080; slower while moving and
+fighting. r_vertexlight 1 adds about 10.
 
 Requirements
 ------------
@@ -60,8 +61,9 @@ console):
                      later map loads come from memory. -1 (default): 256 MB
                      if at least 600 MB of Fast RAM are free, else off.
                      0 turns it off, e.g. 400 sets 400 MB.
-  r_mode 3           640x480 (the default); r_mode 4 is 800x600,
-                     r_mode 13 is 1280x720, r_mode 14 is 1920x1080
+  r_mode 6           1024x768 (the default); r_mode 3 is 640x480 (the
+                     fastest), r_mode 4 is 800x600, r_mode 13 is
+                     1280x720, r_mode 14 is 1920x1080
                      (a matching RTG screen mode is needed in fullscreen);
                      13 and 14 are also in the menu's Video Mode list
   r_fullscreen 0     windowed on the Workbench screen
