@@ -25,21 +25,50 @@ code base and with PiStorm3D, and I hope someone picks it up.
 ## Status
 
 Tested on AmigaOS 3.2, PiStorm with Raspberry Pi 4 (Emu68), PiStorm3D
-`minigl.library` of 2026-09-24:
+`minigl.library` 30.0:
 
 - Menus, levels, cutscenes, sound (AHI), keyboard, mouse and console work.
-- About 40 fps standing, 20-38 fps moving, at 640x480 in the first level
-  (`escape1`); `r_vertexlight 1` adds about 10 fps.
-- Loading a level takes about 20-25 s from an FFS partition. With 1 GB of
-  RAM, files read from the pk3s are kept in a RAM cache, and later loads
-  are about 20% faster (escape1 after the intro: 23 s → 18 s).
+- Frame rate in the first level (`escape1`), standing, A1200 with PiStorm:
+
+  | Mode | fps |
+  |---|---:|
+  | 640x480 (`r_mode 3`) | 47 |
+  | 800x600 (`r_mode 4`) | 42 |
+  | 1280x720 (`r_mode 13`) | 33 |
+  | 1920x1080 (`r_mode 14`) | 19 |
+
+  Moving and fighting is slower; `r_vertexlight 1` adds about 10 fps.
+- Loading a level took about 20-25 s from an FFS partition; 0.4 takes
+  about 4 s off that. With 1 GB of RAM, files read from the pk3s are kept
+  in a RAM cache, and later loads are faster again.
 - Sound is clean with Paula; fights play smoother with the 96 MB sound
   memory that is now the default.
 - Quitting returns cleanly to the Shell.
 
 ## Changes
 
-**0.3** (test release, not yet tested on hardware)
+**0.4**
+
+- Tested on hardware with `minigl.library` 29.3 and 30.0.
+- Faster: about 41 → 47 fps at 640x480 in `escape1`, from a newer compiler
+  with FPU code (`-m68881`), a cheaper clock (Emu68's ARM counter instead
+  of `gettimeofday`) and `minigl.library` 30.0.
+- Level loading about 4 s shorter: lookups no longer try every file in
+  directories that do not exist on the disk (10,000 tries, 4.5 s, on
+  `escape1`).
+- 1280x720 and 1920x1080 can be picked in the menu (Options > System >
+  Video Mode).
+- Fixed: console text disappeared (draws of more than about 1,000
+  vertexes vanish on PiStorm3D, they are now split).
+- Fixed: starting with `+map` / `+devmap` stopped on the logo, because the
+  intro video was started over the level; ESC then quit the game.
+- Fixed: after a fatal error the MiniGL screen could stay open.
+- Absolute pointer input (tablets, remote control tools) moves the menu
+  cursor.
+- Built with `-fbbb=-`: the compiler's extra optimizer passes made wrong
+  code in a related port.
+
+**0.3** (test release, not tested on hardware)
 
 - Built against the PiStorm3D 29.1 SDK. **Needs minigl.library 29.1 or
   newer**; 0.1 and 0.2 need the older 27.x library, and 29.x refuses them.
@@ -296,8 +325,16 @@ bir Amiga oyun programcısının işi değil ve geliştirilecek çok şey var. �
 bir programcının bu kod tabanıyla ve PiStorm3D ile harikalar
 yaratabileceğine inanıyorum.
 
-Durum: 640x480'de ilk bölümde yaklaşık 40 FPS (hareket halinde 20-38);
-`r_vertexlight 1` yaklaşık 10 FPS daha kazandırır.
+Durum (minigl.library 30.0, ilk bölüm, dururken): 640x480'de 47 FPS,
+800x600'de 42, 1280x720'de 33, 1920x1080'de 19. Hareket ve çatışmada daha
+düşük; `r_vertexlight 1` yaklaşık 10 FPS daha kazandırır.
+
+0.4 sürümündeki yenilikler: donanımda (minigl 29.3 ve 30.0) denendi;
+640x480'de yaklaşık 41 → 47 FPS (yeni derleyici ve FPU kodu, Emu68 saati,
+minigl 30.0); bölüm yüklemesi yaklaşık 4 saniye kısaldı; 1280x720 ve
+1920x1080 menüden seçilebiliyor; kaybolan konsol yazıları, `+map` ile
+açılışta logoda kalma ve ölümcül hatadan sonra açık kalan MiniGL ekranı
+düzeltildi.
 
 0.2 sürümündeki yenilikler: sesteki çıtırtı giderildi (AHI tamponu 93 ms
 yerine yaklaşık 0,75 saniye), ses belleği varsayılan olarak 96 MB (çatışmalar

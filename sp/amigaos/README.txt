@@ -3,8 +3,9 @@ Return to Castle Wolfenstein single player for AmigaOS 3.x
 
 A 68k port based on the MorphOS port, rendering through minigl.library.
 Written for PiStorm3D (Raspberry Pi 4 / CM4 PiStorm, Emu68). Tested on
-AmigaOS 3.2 with PiStorm3D, which gives about 40 fps at 640x480 in the
-first level (20-38 fps while moving); r_vertexlight 1 adds about 10.
+AmigaOS 3.2 with PiStorm3D minigl.library 30.0. In the first level,
+standing: 47 fps at 640x480, 42 at 800x600, 33 at 1280x720, 19 at
+1920x1080; slower while moving and fighting. r_vertexlight 1 adds about 10.
 
 Requirements
 ------------
@@ -45,9 +46,9 @@ Notes
   can be ignored.
 - Loading should be faster from PFS3 or SFS than from FFS (not measured):
   the game seeks a lot inside the large pak0.pk3, which is slow on FFS.
-- Loading a level takes about 20-25 s on FFS (measured on escape1). With
-  1 GB of RAM the pk3 RAM cache (fs_ramcache) makes later loads about 20%
-  faster.
+- Loading a level took about 20-25 s on FFS (escape1); 0.4 takes about
+  4 s off that. With 1 GB of RAM the pk3 RAM cache (fs_ramcache) makes
+  later loads faster.
 
 Useful settings (on the command line as +set name value, or in the
 console):

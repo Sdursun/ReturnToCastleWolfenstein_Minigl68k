@@ -1,6 +1,11 @@
 Return to Castle Wolfenstein - tek oyunculu, AmigaOS 3.x / PiStorm3D
 ====================================================================
 
+PiStorm3D minigl.library 30.0 ile denendi. Ilk bolumde dururken: 640x480'de
+47 FPS, 800x600'de 42, 1280x720'de 33, 1920x1080'de 19 (hareket ve
+catismada daha dusuk). Bolum yukleme 0.4 ile yaklasik 4 saniye kisaldi
+(onceden FFS'ten 20-25 saniye).
+
 Gerekenler
 ----------
 - AmigaOS 3.x, FPU'lu 68040 veya ustu (Emu68 uygundur)
