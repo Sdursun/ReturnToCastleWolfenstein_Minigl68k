@@ -187,8 +187,10 @@ First steps, if this is taken up:
   many registered lazily); measuring why parsing is slow is the better
   first step (allocator, `l_script.c` at `-O1`, `menudef.h` parsed again
   for every menu file).
-- **idea** Remember files that were not found: about 3,900 failed lookups
-  per map cost 1.5-2 s.
+- **done** Remember which directories exist (2026-11-19): lookups probed
+  the directory trees with fopen() about 10,000 times per escape1 load
+  (4.5 s on the A1200), nearly all in directories that are not on the
+  disk. Now 67 probes, 30 ms; a load is about 4 s shorter.
 
 ## Usability
 

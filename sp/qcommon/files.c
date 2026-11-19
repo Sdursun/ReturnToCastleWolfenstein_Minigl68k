@@ -40,6 +40,10 @@ If you have questions concerning this license or the applicable additional terms
 #include "qcommon.h"
 #include "unzip.h"
 
+#ifdef __amigaos__
+static void FS_ClearDirCache( void );
+#endif
+
 /*
 =============================================================================
 
@@ -515,6 +519,9 @@ static qboolean FS_CreatePath( char *OSPath ) {
 			*ofs = 0;
 			Sys_Mkdir( OSPath );
 			*ofs = PATH_SEP;
+#ifdef __amigaos__
+			FS_ClearDirCache();
+#endif
 		}
 	}
 	return qfalse;
@@ -1100,6 +1107,91 @@ char *FS_ShiftedStrStr( const char *string, const char *substring, int shift ) {
 	return strstr( string, buf );
 }
 
+#ifdef __amigaos__
+/*
+AmigaOS port: which directories of the search path's directory trees exist.
+
+Nearly all of the game's files are in the pk3s, but every lookup also tries
+the directories with fopen(), about 0.45 ms each on the A1200: loading
+escape1 made 10,000 of them, 4.5 s, almost all for directories that are not
+on the disk at all (main/textures/..., main/models/...). A missing directory
+is now asked for once. Cleared when the file system starts and whenever a
+directory is created.
+*/
+#include <sys/stat.h>
+
+#define FS_DIRCACHE_SIZE    4096        // a power of two
+
+typedef struct {
+	char        *path;
+	unsigned int hash;
+	qboolean exists;
+} fsDirEntry_t;
+
+static fsDirEntry_t fs_dirCache[FS_DIRCACHE_SIZE];
+static int fs_dirCacheCount;
+
+static void FS_ClearDirCache( void ) {
+	int i;
+
+	for ( i = 0; i < FS_DIRCACHE_SIZE; i++ ) {
+		if ( fs_dirCache[i].path ) {
+			free( fs_dirCache[i].path );
+		}
+	}
+	memset( fs_dirCache, 0, sizeof( fs_dirCache ) );
+	fs_dirCacheCount = 0;
+}
+
+// qfalse when the directory the file would be in does not exist
+static qboolean FS_DirMayHold( const char *ospath ) {
+	char dir[MAX_OSPATH];
+	const char *slash = strrchr( ospath, PATH_SEP );
+	unsigned int hash = 5381;
+	int i, len;
+	struct stat st;
+	fsDirEntry_t *e;
+
+	if ( !slash ) {
+		return qtrue;
+	}
+	len = slash - ospath;
+	if ( len <= 0 || len >= (int)sizeof( dir ) ) {
+		return qtrue;
+	}
+	// AmigaOS names are not case sensitive
+	for ( i = 0; i < len; i++ ) {
+		char c = ospath[i];
+
+		if ( c >= 'A' && c <= 'Z' ) {
+			c += 'a' - 'A';
+		}
+		dir[i] = c;
+		hash = hash * 33 + (unsigned char)c;
+	}
+	dir[len] = 0;
+
+	for ( i = hash & ( FS_DIRCACHE_SIZE - 1 ); fs_dirCache[i].path; i = ( i + 1 ) & ( FS_DIRCACHE_SIZE - 1 ) ) {
+		if ( fs_dirCache[i].hash == hash && !strcmp( fs_dirCache[i].path, dir ) ) {
+			return fs_dirCache[i].exists;
+		}
+	}
+	if ( fs_dirCacheCount >= FS_DIRCACHE_SIZE * 3 / 4 ) {
+		return qtrue;   // full: just look
+	}
+	e = &fs_dirCache[i];
+	e->path = malloc( len + 1 );
+	if ( !e->path ) {
+		return qtrue;
+	}
+	strcpy( e->path, dir );
+	e->hash = hash;
+	e->exists = stat( dir, &st ) == 0 ? qtrue : qfalse;
+	fs_dirCacheCount++;
+	return e->exists;
+}
+#endif
+
 /*
 ===========
 FS_FOpenFileRead
@@ -1322,6 +1414,9 @@ int FS_FOpenFileRead( const char *filename, fileHandle_t *file, qboolean uniqueF
 				extern int amiga_fsDiskProbes, amiga_fsDiskProbeMsec;
 				int probeStart = Sys_Milliseconds();
 
+				if ( !FS_DirMayHold( netpath ) ) {
+					continue;
+				}
 				fsh[*file].handleFiles.file.o = fopen( netpath, "rb" );
 				amiga_fsDiskProbes++;
 				amiga_fsDiskProbeMsec += Sys_Milliseconds() - probeStart;
@@ -3176,6 +3271,9 @@ static void FS_Startup( const char *gameName ) {
 	cvar_t  *fs;
 
 	Com_Printf( "----- FS_Startup -----\n" );
+#ifdef __amigaos__
+	FS_ClearDirCache();
+#endif
 
 	fs_debug = Cvar_Get( "fs_debug", "0", 0 );
 	fs_copyfiles = Cvar_Get( "fs_copyfiles", "0", CVAR_INIT );
