@@ -1960,6 +1960,10 @@ void Com_SetRecommended( qboolean vidrestart ) {
 Com_Init
 =================
 */
+#ifdef __amigaos__
+static qboolean com_startupCommands;
+#endif
+
 void Com_Init( char *commandLine ) {
 	char    *s;
 
@@ -2096,9 +2100,16 @@ void Com_Init( char *commandLine ) {
 	com_frameTime = Com_Milliseconds();
 
 	// add + commands from command line
+#ifdef __amigaos__
+	// AmigaOS port: remember them, so the intro below does not start over a
+	// "+map": the client then switched to the video while it was connecting
+	// to the map, and stayed on the logo until ESC, which quit the game.
+	com_startupCommands = Com_AddStartupCommands();
+#else
 	if ( !Com_AddStartupCommands() ) {
 		// if the user didn't give any commands, run default action
 	}
+#endif
 
 	// start in full screen ui mode
 	Cvar_Set( "r_uiFullScreen", "1" );
@@ -2117,7 +2128,11 @@ void Com_Init( char *commandLine ) {
 
 	if ( !com_dedicated->integer ) {
 		//Cbuf_AddText ("cinematic gmlogo.RoQ\n");
+#ifdef __amigaos__
+		if ( !com_introPlayed->integer && !com_startupCommands ) {
+#else
 		if ( !com_introPlayed->integer ) {
+#endif
 		#ifdef __MACOS__
 			extern void PlayIntroMovies( void );
 			PlayIntroMovies();
