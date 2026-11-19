@@ -60,8 +60,8 @@ Tested on AmigaOS 3.2, PiStorm with Raspberry Pi 4 (Emu68), PiStorm3D
 - 1280x720 and 1920x1080 can be picked in the menu (Options > System >
   Video Mode).
 - The default mode is 1024x768 (`r_mode 6`). `amiga.cfg` no longer sets
-  `r_mode`, `r_vertexlight 1` or `r_picmip 1`: lightmaps are on and
-  textures full size unless you change them.
+  `r_mode`, `r_vertexlight 1` or `r_picmip 1`: lightmaps are on, and
+  `r_picmip` stays at the game's own default (1, half size textures).
 - Fixed: console text disappeared (draws of more than about 1,000
   vertexes vanish on PiStorm3D, they are now split).
 - Fixed: starting with `+map` / `+devmap` stopped on the logo, because the
