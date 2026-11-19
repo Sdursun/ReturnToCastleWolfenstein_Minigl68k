@@ -70,6 +70,8 @@ Tested on AmigaOS 3.2, PiStorm with Raspberry Pi 4 (Emu68), PiStorm3D
 - Fixed: after a fatal error the MiniGL screen could stay open.
 - Absolute pointer input (tablets, remote control tools) moves the menu
   cursor.
+- A Workbench icon: a 64x64 GlowIcon with 32 colours, and a 4 colour image
+  for older Workbenches. `sp/amigaos/tools/mkicon.py` draws it.
 - Built with `-fbbb=-`: the compiler's extra optimizer passes made wrong
   code in a related port.
 
@@ -125,9 +127,9 @@ Steps:
 
 1. Copy the `main/` directory of the PC installation (at least `pak0.pk3`,
    `sp_pak1.pk3`, `sp_pak2.pk3`, `sp_pak3.pk3`) to e.g. `Games:RTCW/main`.
-2. Copy `rtcw-sp` (see *Building*) to `Games:RTCW` and
-   `sp/amigaos/amiga.cfg` to `Games:RTCW/main`.
-3. From a Shell:
+2. Copy `rtcw-sp` (see *Building*) and its icon `sp/amigaos/rtcw-sp.info`
+   to `Games:RTCW`, and `sp/amigaos/amiga.cfg` to `Games:RTCW/main`.
+3. Double-click the icon on Workbench, or from a Shell:
 
    ```
    cd Games:RTCW

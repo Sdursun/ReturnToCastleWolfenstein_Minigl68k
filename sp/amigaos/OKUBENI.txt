@@ -21,15 +21,16 @@ Kurulum
 1. 1.41 yamali PC kurulumunun main/ klasorunu bir yere kopyalayin,
    ornegin Games:RTCW/main (en az pak0.pk3, sp_pak1.pk3, sp_pak2.pk3,
    sp_pak3.pk3).
-2. rtcw-sp dosyasini Games:RTCW icine, bu paketteki main/amiga.cfg
-   dosyasini Games:RTCW/main icine kopyalayin.
-3. Shell'den calistirin:
+2. rtcw-sp dosyasini ve simgesi rtcw-sp.info'yu Games:RTCW icine, bu
+   paketteki main/amiga.cfg dosyasini Games:RTCW/main icine kopyalayin.
+3. Workbench'te simgeye cift tiklayin ya da Shell'den calistirin:
      cd Games:RTCW
      rtcw-sp +exec amiga.cfg
    Dogrudan bolum acmak icin: rtcw-sp +exec amiga.cfg +devmap escape1
 
-Ayarlarin kalici olmasi icin main/autoexec.cfg dosyasina (yoksa olusturun)
-"exec amiga.cfg" satirini ekleyin.
+Ayarlarin kalici olmasi (ve Workbench'ten acarken de kullanilmasi) icin
+main/autoexec.cfg dosyasina (yoksa olusturun) "exec amiga.cfg" satirini
+ekleyin.
 
 Notlar
 ------

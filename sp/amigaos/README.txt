@@ -23,16 +23,18 @@ Installing
 1. Copy the main/ directory of a PC installation patched to 1.41
    (pak0.pk3, sp_pak1.pk3, sp_pak2.pk3, sp_pak3.pk3 at least) into a
    directory, e.g. Games:RTCW/main.
-2. Copy rtcw-sp into Games:RTCW, and amiga.cfg (main/amiga.cfg in the
-   release archive, sp/amigaos/amiga.cfg in the source)
-   into Games:RTCW/main.
-3. Start it from a Shell in that directory:
+2. Copy rtcw-sp and its icon rtcw-sp.info into Games:RTCW, and amiga.cfg
+   (main/amiga.cfg in the release archive, sp/amigaos/amiga.cfg in the
+   source) into Games:RTCW/main.
+3. Double-click the icon on Workbench, or start it from a Shell in that
+   directory:
      cd Games:RTCW
      rtcw-sp +exec amiga.cfg
    To start a level directly: rtcw-sp +exec amiga.cfg +devmap escape1
 
-To make the settings permanent, add "exec amiga.cfg" to main/autoexec.cfg
-(create it if it does not exist).
+To make the settings permanent (and to use them when starting from
+Workbench), add "exec amiga.cfg" to main/autoexec.cfg (create it if it
+does not exist).
 
 Notes
 -----
