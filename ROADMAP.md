@@ -203,7 +203,8 @@ First steps, if this is taken up:
 
 - **next** Play through more levels, saving and loading games (the reset
   of the statically linked game modules is exercised there), and the
-  cutscenes (an early test showed only the logo until ESC).
+  cutscenes. (The "only the logo until ESC" seen with `+map` was the intro
+  video started over the map; fixed 2026-11-19.)
 - **next** fps at 800x600, 1280x720 and 1920x1080.
 - **idea** Other minigl.library implementations (not PiStorm3D) have never
   been tried.
