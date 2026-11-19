@@ -46,7 +46,8 @@ Notlar
 - Varsayilan cozunurluk 1024x768 (r_mode 6). 640x480 (r_mode 3) en hizli
   moddur; dusuk cozunurluk (320x240) daha yavastir.
 - r_vertexlight 1 yaklasik 10 FPS kazandirir, isiklandirma daha duz olur.
-  r_picmip 1 dokulari yarim cozunurlukte yukler (daha az bellek).
+  Dokular varsayilan olarak tam boy (r_picmip 0); r_picmip 1 onlari yarim
+  cozunurlukte yukler: daha az bellek, PiStorm3D'de hiz farki yok.
 - Pencere modunda fare imleci gosterilmez.
 - Ses bellegi varsayilan olarak 96 MB (com_soundMegs). Daha azi
   catismalarda takilmaya yol aciyordu. Az bellekli sistemlerde

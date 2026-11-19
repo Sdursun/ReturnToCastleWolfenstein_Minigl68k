@@ -61,7 +61,8 @@ Tested on AmigaOS 3.2, PiStorm with Raspberry Pi 4 (Emu68), PiStorm3D
   Video Mode).
 - The default mode is 1024x768 (`r_mode 6`). `amiga.cfg` no longer sets
   `r_mode`, `r_vertexlight 1` or `r_picmip 1`: lightmaps are on, and
-  `r_picmip` stays at the game's own default (1, half size textures).
+  textures are full size by default (`r_picmip 0`). On the A1200 that
+  costs no frame rate, about 1 s of loading; `r_picmip 1` saves memory.
 - Fixed: console text disappeared (draws of more than about 1,000
   vertexes vanish on PiStorm3D, they are now split).
 - Fixed: starting with `+map` / `+devmap` stopped on the logo, because the
@@ -336,8 +337,9 @@ düşük; `r_vertexlight 1` yaklaşık 10 FPS daha kazandırır.
 0.4 sürümündeki yenilikler: donanımda (minigl 29.3 ve 30.0) denendi;
 640x480'de yaklaşık 41 → 47 FPS (yeni derleyici ve FPU kodu, Emu68 saati,
 minigl 30.0); bölüm yüklemesi yaklaşık 4 saniye kısaldı; 1280x720 ve
-1920x1080 menüden seçilebiliyor; varsayılan çözünürlük 1024x768 ve
-amiga.cfg artık r_mode, r_vertexlight ve r_picmip ayarlamıyor; kaybolan konsol yazıları, `+map` ile
+1920x1080 menüden seçilebiliyor; varsayılan çözünürlük 1024x768, dokular
+varsayılan olarak tam boy (r_picmip 0, fps farkı yok) ve amiga.cfg artık
+r_mode, r_vertexlight ve r_picmip ayarlamıyor; kaybolan konsol yazıları, `+map` ile
 açılışta logoda kalma ve ölümcül hatadan sonra açık kalan MiniGL ekranı
 düzeltildi.
 
