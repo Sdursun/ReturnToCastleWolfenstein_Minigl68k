@@ -39,9 +39,14 @@ CPU     = -m68040 -m68881
 # not treated as builtins at all; the 68040 has no fsin/fcos to inline.
 # No -fomit-frame-pointer: it broke the view on hardware with the older compiler
 # (2026-09-25). With this one it works, but gains nothing (2026-11-04, ROADMAP.md).
-BASEFLAGS = -O2 -noixemul $(CPU) -fsigned-char -fno-strict-aliasing -fno-math-errno \
+# -fbbb=-: bebbo's extra optimizer passes off. In the iortcw port they kept a
+# register a call had clobbered as a pointer (wrong code, seen in the
+# disassembly). Without them escape1 runs 0.7% faster here (2026-11-19).
+BASEFLAGS = -O2 -fbbb=- -noixemul $(CPU) -fsigned-char -fno-strict-aliasing -fno-math-errno \
             -fno-builtin-sin -fno-builtin-cos -fno-builtin-sinf -fno-builtin-cosf \
             -DNDEBUG -DBOTLIB -I$(MINIGL)/minigl-shared-library/include
+# Flags for a trial build, e.g. "./build.sh OBJDIR=objects_x XCFLAGS=-fbbb=-"
+BASEFLAGS += $(XCFLAGS)
 
 # Game code: 4-byte aligned ints, as on the PC, so that data files read
 # straight into structures (the bots' .aas files, for one) line up.
