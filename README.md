@@ -343,7 +343,7 @@ minigl 30.0); bölüm yüklemesi yaklaşık 4 saniye kısaldı; 1280x720 ve
 varsayılan olarak tam boy (r_picmip 0, fps farkı yok) ve amiga.cfg artık
 r_mode, r_vertexlight ve r_picmip ayarlamıyor; kaybolan konsol yazıları, `+map` ile
 açılışta logoda kalma ve ölümcül hatadan sonra açık kalan MiniGL ekranı
-düzeltildi.
+düzeltildi; Workbench simgesi eklendi (64x64 GlowIcon, 32 renk).
 
 0.2 sürümündeki yenilikler: sesteki çıtırtı giderildi (AHI tamponu 93 ms
 yerine yaklaşık 0,75 saniye), ses belleği varsayılan olarak 96 MB (çatışmalar
