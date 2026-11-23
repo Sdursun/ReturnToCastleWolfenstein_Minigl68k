@@ -50,12 +50,19 @@
 #define NM_BUTTON_FOURTH 0x7E
 #endif
 
-#define MAXIMSGS 32
+/* Key and button events. Plain mouse movement does not go through here
+   (handlerdx/handlerdy below): a USB mouse sends hundreds of moves a
+   second, and the 32 entries this had could run over during a slow frame,
+   dropping button releases along with the moves. */
+#define MAXIMSGS 256
 
 /* Filled by the input handler, which runs in input.device's task. */
 static struct InputEvent imsgs[MAXIMSGS];
 static volatile int imsglow = 0;
 static volatile int imsghigh = 0;
+
+/* Mouse movement added up by the input handler; read under Forbid(). */
+static volatile int handlerdx, handlerdy;
 
 extern struct IntuitionBase *IntuitionBase;
 
@@ -457,6 +464,8 @@ static void DecodeInputEvent(struct InputEvent *in)
 	}
 	else if (in->ie_Class == IECLASS_RAWMOUSE)
 	{
+		/* only events with a button come here; the movement is in
+		   handlerdx/handlerdy */
 		code = in->ie_Code & ~IECODE_UP_PREFIX;
 		down = !(in->ie_Code & IECODE_UP_PREFIX);
 
@@ -466,9 +475,6 @@ static void DecodeInputEvent(struct InputEvent *in)
 			QueueEvent(SE_KEY, K_MOUSE2, down);
 		else if (code == IECODE_MBUTTON)
 			QueueEvent(SE_KEY, K_MOUSE3, down);
-
-		mouse_x += in->ie_position.ie_xy.ie_x;
-		mouse_y += in->ie_position.ie_xy.ie_y;
 	}
 	else if (in->ie_Class == IECLASS_NEWPOINTERPOS)
 	{
@@ -522,11 +528,27 @@ int IN_GetEvent(sysEvent_t *ev)
 	{
 		i = imsglow;
 
-		if (amiga_inputwindow && (amiga_inputwindow->Flags & WFLG_WINDOWACTIVE))
+		/* Releases also when the window is not active: a button let go
+		   there would otherwise stay down in the game. */
+		if (amiga_inputwindow && ((amiga_inputwindow->Flags & WFLG_WINDOWACTIVE)
+		    || ((imsgs[i].ie_Class == IECLASS_RAWKEY || imsgs[i].ie_Class == IECLASS_RAWMOUSE)
+		        && (imsgs[i].ie_Code & IECODE_UP_PREFIX) && imsgs[i].ie_Code != IECODE_NOBUTTON)))
 			DecodeInputEvent(&imsgs[i]);
 
 		/* One store, so the handler never sees an out-of-range index. */
 		imsglow = (i + 1) % MAXIMSGS;
+	}
+
+	{
+		int dx, dy;
+
+		Forbid();
+		dx = handlerdx;
+		dy = handlerdy;
+		handlerdx = handlerdy = 0;
+		Permit();
+		mouse_x += dx;
+		mouse_y += dy;
 	}
 
 	if (pendinglow != pendinghigh)
@@ -582,7 +604,33 @@ static struct InputEvent *myinputhandler(register struct InputEvent *moo __asm("
 		        || (coin->ie_Qualifier & IEQUALIFIER_RELATIVEMOUSE)))
 			continue;
 
-		if (coin->ie_Class == IECLASS_RAWMOUSE || coin->ie_Class == IECLASS_RAWKEY || coin->ie_Class == IECLASS_NEWMOUSE
+		if (coin->ie_Class == IECLASS_RAWMOUSE)
+		{
+			/* the movement goes to the counters, the event only if it has
+			   a button */
+			if (window->Flags & WFLG_WINDOWACTIVE)
+			{
+				handlerdx += coin->ie_position.ie_xy.ie_x;
+				handlerdy += coin->ie_position.ie_xy.ie_y;
+			}
+			if (coin->ie_Code != IECODE_NOBUTTON)
+			{
+				next = (imsghigh + 1) % MAXIMSGS;
+				if (next != imsglow)
+				{
+					CopyMem(coin, &imsgs[imsghigh], sizeof(imsgs[0]));
+					imsghigh = next;
+				}
+			}
+
+			/* while the game has the mouse, the Intuition pointer stays put */
+			if (!mousevisible && (window->Flags & WFLG_WINDOWACTIVE) && screeninfront && window->MouseX > 0 && window->MouseY > 0)
+			{
+				coin->ie_position.ie_xy.ie_x = 0;
+				coin->ie_position.ie_xy.ie_y = 0;
+			}
+		}
+		else if (coin->ie_Class == IECLASS_RAWKEY || coin->ie_Class == IECLASS_NEWMOUSE
 		    || coin->ie_Class == IECLASS_NEWPOINTERPOS)
 		{
 			next = (imsghigh + 1) % MAXIMSGS;
@@ -599,11 +647,6 @@ static struct InputEvent *myinputhandler(register struct InputEvent *moo __asm("
 				imsghigh = next;
 			}
 
-			if (!mousevisible && (window->Flags & WFLG_WINDOWACTIVE) && coin->ie_Class == IECLASS_RAWMOUSE && screeninfront && window->MouseX > 0 && window->MouseY > 0)
-			{
-				coin->ie_position.ie_xy.ie_x = 0;
-				coin->ie_position.ie_xy.ie_y = 0;
-			}
 		}
 	}
 

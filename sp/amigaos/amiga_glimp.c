@@ -36,6 +36,7 @@ unsigned int amiga_shadeMicros;
 unsigned int amiga_soundMicros;
 
 static cvar_t *r_amigaspeeds;
+static BYTE gamepri;    /* the task's priority when the context was made */
 static cvar_t *r_mglbuffers;
 
 static int glctx;
@@ -226,6 +227,7 @@ void GLimp_Init(void)
 	   run while the context is open; see Sys_Print and GLimp_Frame. */
 	mglLockMode(MGL_LOCK_AUTOMATIC);
 	amiga_holdconsole = 1;
+	gamepri = FindTask(NULL)->tc_Node.ln_Pri;
 
 	amiga_inputwindow = (struct Window *)mglGetInputWindowHandle();
 	if (amiga_inputwindow)
@@ -296,19 +298,43 @@ void GLimp_LogComment(char *comment)
 {
 }
 
+/*
+ * The frame to the screen, then the display lock released and the task's
+ * priority put back.
+ *
+ * On the A1200 (PiStorm3D minigl.library 30.0) the game's priority was
+ * sometimes raised to 20 -- at least once inside mglSwitchDisplay -- and
+ * after a few minutes of play it stayed there. The game never waits, so
+ * everything below 20 stopped: input commodities (no more keys or mouse in
+ * the game), AHI's HDMI driver (the last sound buffer looping), the network.
+ * The world went on, the player froze, and only a level load (which waits
+ * for the disk) let it recover. Logged with a test build on 2026-11-23:
+ * the priority stuck at 20 every time it froze; with it put back after each
+ * frame there was no freeze in long play, with and without sound.
+ */
+static void SwitchDisplay(void)
+{
+	struct Task *me = FindTask(NULL);
+
+	mglSwitchDisplay();
+	mglUnlockDisplay();
+	if (me->tc_Node.ln_Pri != gamepri)
+		SetTaskPri(me, gamepri);
+}
+
 void GLimp_EndFrame(void)
 {
 	unsigned int start;
 
 	if (!amiga_speeds)
 	{
-		mglSwitchDisplay();
+		SwitchDisplay();
 		amiga_speeds = r_amigaspeeds->integer;
 		return;
 	}
 
 	start = Amiga_Micros();
-	mglSwitchDisplay();
+	SwitchDisplay();
 	start = Amiga_Micros() - start;
 
 	{
