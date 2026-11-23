@@ -145,8 +145,9 @@ Requirements:
 - RTG (Picasso96 or CyberGraphX)
 - `minigl.library` **29.1 or newer** in `LIBS:` (from the PiStorm3D release)
 - AHI
-- Plenty of Fast RAM (about 25 MB for the executable, as much again for
-  data)
+- Plenty of Fast RAM: about 200 MB free is recommended (about 25 MB for
+  the executable, 96 MB for sound, the rest for game data); with less,
+  start with `+set com_soundMegs 24`
 
 Steps:
 
