@@ -32,13 +32,14 @@ Tested on AmigaOS 3.2, PiStorm with Raspberry Pi 4 (Emu68), PiStorm3D
 
   | Mode | fps |
   |---|---:|
-  | 640x480 (`r_mode 3`) | 47 |
-  | 800x600 (`r_mode 4`) | 42 |
-  | 1024x768 (`r_mode 6`, the default) | 36 |
-  | 1280x720 (`r_mode 13`) | 33 |
-  | 1920x1080 (`r_mode 14`) | 19 |
+  | 640x480 (`r_mode 3`) | 56 |
+  | 800x600 (`r_mode 4`) | 50 |
+  | 1024x768 (`r_mode 6`, the default) | 42 |
+  | 1280x720 (`r_mode 13`) | 37 |
+  | 1920x1080 (`r_mode 14`) | 20 |
 
-  Moving and fighting is slower; `r_vertexlight 1` adds about 10 fps.
+  In the open (`dam`, 1024x768) 31 fps. Moving and fighting is slower;
+  `r_vertexlight 1` adds about 10 fps.
 - Loading a level took about 20-25 s from an FFS partition; 0.4 takes
   about 4 s off that. With 1 GB of RAM, files read from the pk3s are kept
   in a RAM cache, and later loads are faster again.
@@ -356,8 +357,9 @@ bir Amiga oyun programcısının işi değil ve geliştirilecek çok şey var. �
 bir programcının bu kod tabanıyla ve PiStorm3D ile harikalar
 yaratabileceğine inanıyorum.
 
-Durum (minigl.library 30.0, ilk bölüm, dururken): 640x480'de 47 FPS,
-800x600'de 42, 1024x768'de (varsayılan) 36, 1280x720'de 33, 1920x1080'de 19. Hareket ve çatışmada daha
+Durum (0.4.1, minigl.library 30.0, ilk bölüm, dururken): 640x480'de 56 FPS,
+800x600'de 50, 1024x768'de (varsayılan) 42, 1280x720'de 37, 1920x1080'de 20;
+açık alanda (dam, 1024x768) 31. Hareket ve çatışmada daha
 düşük; `r_vertexlight 1` yaklaşık 10 FPS daha kazandırır.
 
 0.4.1 sürümündeki yenilikler: birkaç dakika oynayınca karakterin donması

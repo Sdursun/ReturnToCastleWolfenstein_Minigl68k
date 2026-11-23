@@ -4,9 +4,9 @@ Return to Castle Wolfenstein single player for AmigaOS 3.x
 A 68k port based on the MorphOS port, rendering through minigl.library.
 Written for PiStorm3D (Raspberry Pi 4 / CM4 PiStorm, Emu68). Tested on
 AmigaOS 3.2 with PiStorm3D minigl.library 30.0. In the first level,
-standing: 47 fps at 640x480, 42 at 800x600, 36 at 1024x768 (the
-default), 33 at 1280x720, 19 at 1920x1080; slower while moving and
-fighting. r_vertexlight 1 adds about 10.
+standing: 56 fps at 640x480, 50 at 800x600, 42 at 1024x768 (the
+default), 37 at 1280x720, 20 at 1920x1080; 31 in the open (dam,
+1024x768); slower while moving and fighting. r_vertexlight 1 adds about 10.
 
 Requirements
 ------------
