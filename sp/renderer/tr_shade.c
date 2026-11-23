@@ -495,6 +495,10 @@ static void ProjectDlightTexture( void ) {
 	float scale;
 	float radius;
 	vec3_t floatColor;
+#ifdef __amigaos__
+	vec3_t bmins, bmaxs;
+	int haveBounds = 0;
+#endif
 
 	if ( !backEnd.refdef.num_dlights ) {
 		return;
@@ -523,6 +527,127 @@ static void ProjectDlightTexture( void ) {
 		floatColor[1] = dl->color[1] * 255.0f;
 		floatColor[2] = dl->color[2] * 255.0f;
 
+#ifdef __amigaos__
+		/*
+		AmigaOS port: the same result for less 68k work. This took about
+		5 ms a frame in the open areas of dam on the A1200 (11% of the time),
+		as a batch holds up to 1000 vertexes and every light went through all
+		of them.
+		- A light that lies beyond the batch's bounds on one side gives every
+		  vertex the same clip bit, so no triangle is lit: skip it. The test
+		  uses the expressions below at the extreme vertex, so it agrees with
+		  them exactly.
+		- The colours are needed only by the vertexes of lit triangles, so
+		  they are worked out there.
+		*/
+		{
+			if ( !haveBounds ) {
+				// inline: a call per vertex cost as much as it saved
+				float x0 = 99999.0f, x1 = -99999.0f, y0 = 99999.0f, y1 = -99999.0f, z0 = 99999.0f, z1 = -99999.0f;
+				const float *p = tess.xyz[0];
+
+				for ( i = 0 ; i < tess.numVertexes ; i++, p += 4 ) {
+					if ( p[0] < x0 ) {
+						x0 = p[0];
+					}
+					if ( p[0] > x1 ) {
+						x1 = p[0];
+					}
+					if ( p[1] < y0 ) {
+						y0 = p[1];
+					}
+					if ( p[1] > y1 ) {
+						y1 = p[1];
+					}
+					if ( p[2] < z0 ) {
+						z0 = p[2];
+					}
+					if ( p[2] > z1 ) {
+						z1 = p[2];
+					}
+				}
+				bmins[0] = x0; bmins[1] = y0; bmins[2] = z0;
+				bmaxs[0] = x1; bmaxs[1] = y1; bmaxs[2] = z1;
+				haveBounds = 1;
+			}
+			if ( 0.5f + ( origin[0] - bmins[0] ) * scale < 0.0f
+				 || 0.5f + ( origin[0] - bmaxs[0] ) * scale > 1.0f
+				 || 0.5f + ( origin[1] - bmins[1] ) * scale < 0.0f
+				 || 0.5f + ( origin[1] - bmaxs[1] ) * scale > 1.0f
+				 || origin[2] - bmaxs[2] > radius
+				 || origin[2] - bmins[2] < -radius ) {
+				continue;
+			}
+		}
+
+		for ( i = 0 ; i < tess.numVertexes ; i++, texCoords += 2 ) {
+			vec3_t dist;
+			int clip;
+
+			VectorSubtract( origin, tess.xyz[i], dist );
+			backEnd.pc.c_dlightVertexes++;
+
+			texCoords[0] = 0.5f + dist[0] * scale;
+			texCoords[1] = 0.5f + dist[1] * scale;
+
+			clip = 0;
+			if ( texCoords[0] < 0.0f ) {
+				clip |= 1;
+			} else if ( texCoords[0] > 1.0f ) {
+				clip |= 2;
+			}
+			if ( texCoords[1] < 0.0f ) {
+				clip |= 4;
+			} else if ( texCoords[1] > 1.0f ) {
+				clip |= 8;
+			}
+			if ( dist[2] > radius ) {
+				clip |= 16;
+			} else if ( dist[2] < -radius ) {
+				clip |= 32;
+			}
+			clipBits[i] = clip;
+			colors[i * 4 + 3] = 0;      // colour not worked out yet
+		}
+
+		numIndexes = 0;
+		for ( i = 0 ; i < tess.numIndexes ; i += 3 ) {
+			int k;
+
+			if ( clipBits[tess.indexes[i]] & clipBits[tess.indexes[i + 1]] & clipBits[tess.indexes[i + 2]] ) {
+				continue;   // not lighted
+			}
+			for ( k = 0 ; k < 3 ; k++ ) {
+				int v = tess.indexes[i + k];
+				byte *c = colors + v * 4;
+
+				if ( !c[3] ) {
+					float d = origin[2] - tess.xyz[v][2];
+					float modulate;
+
+					// modulate the strength based on the height and color
+					if ( d > radius ) {
+						modulate = 0.0f;
+					} else if ( d < -radius ) {
+						modulate = 0.0f;
+					} else {
+						d = Q_fabs( d );
+						if ( d < radius * 0.5f ) {
+							modulate = 1.0f;
+						} else {
+							modulate = 2.0f * ( radius - d ) * scale;
+						}
+					}
+					c[0] = myftol( floatColor[0] * modulate );
+					c[1] = myftol( floatColor[1] * modulate );
+					c[2] = myftol( floatColor[2] * modulate );
+					c[3] = 255;
+				}
+				hitIndexes[numIndexes + k] = v;
+			}
+			numIndexes += 3;
+		}
+#else
 		for ( i = 0 ; i < tess.numVertexes ; i++, texCoords += 2, colors += 4 ) {
 			vec3_t dist;
 			int clip;
@@ -609,6 +734,7 @@ static void ProjectDlightTexture( void ) {
 			hitIndexes[numIndexes + 2] = c;
 			numIndexes += 3;
 		}
+#endif
 
 		if ( !numIndexes ) {
 			continue;

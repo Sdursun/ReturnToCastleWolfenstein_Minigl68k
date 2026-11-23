@@ -122,19 +122,14 @@ qboolean SNDDMA_Init(void)
 						                  AHIDB_Bits, (ULONG)&bits,
 						                  TAG_END);
 
-						{
-							ULONG mixfreq = 0;
-
-							AHI_ControlAudio(ad->audioctrl,
-							                 AHIC_MixFreq_Query, (ULONG)&mixfreq,
-							                 TAG_END);
-
-							/* The Paula driver has been seen to answer
-							   with its 3.5 MHz clock here; only take a
-							   mixing rate that makes sense. */
-							if (mixfreq >= 8000 && mixfreq <= 96000)
-								speed = mixfreq;
-						}
+						/* The game mixes at its own rate (22050 unless
+						   sndspeed says otherwise) and AHI plays that buffer
+						   at whatever rate its mode runs. It used to take
+						   the mode's rate: 48000 with Emu68 HDMI. RTCW's
+						   sounds are 22 kHz, and its mixer paints about ten
+						   frames ahead in every frame, so at 48 kHz and
+						   25 fps the sound took ~10% of the A1200's time
+						   for nothing it could hear (2026-11-23). */
 
 						/* AHIDB_Bits is the hardware mode's resolution
 						   (8 for Paula DMA, 14 for Paula 14-bit, ...).
