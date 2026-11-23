@@ -122,9 +122,21 @@ static void GLimp_InitExtensions(void)
 		ri.Printf(PRINT_ALL, "...not using GL_ARB_multitexture\n");
 	}
 
-	/* textureEnvAddAvailable stays false. PiStorm3D 29.3 accepts GL_ADD on the
-	   second texture unit but multiplies instead (tests/gladdtest.c): what
-	   should add a glow would turn the wall around it black. */
+	/* GL_ADD on the second unit, for shaders whose second stage adds (glows).
+	   tests/gladdtest.c finds PiStorm3D 29.3 and 30.0 multiplying instead of
+	   adding, which would darken the wall around such a glow. Off until
+	   2026-11-23; then the user played with it on and saw nothing wrong, so
+	   it is on unless r_ext_texture_env_add is 0. It gains no speed (dam,
+	   1024x768: 26.8 fps either way). */
+	if (r_ext_texture_env_add->integer && qglActiveTextureARB)
+	{
+		glConfig.textureEnvAddAvailable = qtrue;
+		ri.Printf(PRINT_ALL, "...using GL_EXT_texture_env_add\n");
+	}
+	else
+	{
+		ri.Printf(PRINT_ALL, "...not using GL_EXT_texture_env_add\n");
+	}
 
 	if (r_ext_compiled_vertex_array->integer)
 	{
