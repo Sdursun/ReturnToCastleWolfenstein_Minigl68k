@@ -46,6 +46,12 @@ Notlar
   olur (olculmedi); FFS buyuk pak0.pk3 icinde atlamada yavastir.
 - Varsayilan cozunurluk 1024x768 (r_mode 6). 640x480 (r_mode 3) en hizli
   moddur; dusuk cozunurluk (320x240) daha yavastir.
+- Dinamik isiklar varsayilan olarak yalniz oyunun zorunlu tuttuklari
+  (r_dynamiclight 2): acik alanlarda yaklasik 3 FPS kazandirir. Mesale,
+  ates ve namlu alevinin cevreyi aydinlatmasi icin konsolda
+  /r_dynamiclight 1 yazin (kaydedilir); 0 hepsini kapatir.
+- GL_ADD acik (r_ext_texture_env_add 1). Parlayan yuzeylerin cevresi
+  kararirsa /r_ext_texture_env_add 0 ve /vid_restart.
 - r_vertexlight 1 yaklasik 10 FPS kazandirir, isiklandirma daha duz olur.
   Dokular varsayilan olarak tam boy (r_picmip 0); r_picmip 1 onlari yarim
   cozunurlukte yukler: daha az bellek, PiStorm3D'de hiz farki yok.

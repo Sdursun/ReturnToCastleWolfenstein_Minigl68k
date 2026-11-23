@@ -1055,7 +1055,14 @@ void R_Register( void ) {
 	r_fastsky = ri.Cvar_Get( "r_fastsky", "0", CVAR_ARCHIVE );
 	r_inGameVideo = ri.Cvar_Get( "r_inGameVideo", "1", CVAR_ARCHIVE );
 	r_drawSun = ri.Cvar_Get( "r_drawSun", "1", CVAR_ARCHIVE );
+#ifdef __amigaos__
+	// AmigaOS port: only the lights the game forces (lightning and the like).
+	// All of them cost ~3 fps in open areas on the A1200 (dam, 1024x768:
+	// 27.2 fps with 1, 30.5 with 2); r_dynamiclight 1 turns them back on.
+	r_dynamiclight = ri.Cvar_Get( "r_dynamiclight", "2", CVAR_ARCHIVE );
+#else
 	r_dynamiclight = ri.Cvar_Get( "r_dynamiclight", "1", CVAR_ARCHIVE );
+#endif
 	r_dlightScale = ri.Cvar_Get( "r_dlightScale", "1.0", CVAR_ARCHIVE );   //----(SA)	added
 	r_dlightBacks = ri.Cvar_Get( "r_dlightBacks", "1", CVAR_ARCHIVE );
 	r_finish = ri.Cvar_Get( "r_finish", "0", CVAR_ARCHIVE );

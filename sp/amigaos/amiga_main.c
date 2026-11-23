@@ -51,7 +51,7 @@ void Sys_SetDefaultCDPath(const char *path);
 
 #define BINNAME "rtcw-sp"
 
-const char verstring[] = "$VER: "BINNAME" 0.4 (19.11.2026) AmigaOS 3.x/MiniGL port, based on the MorphOS port by Mark Olsen";
+const char verstring[] = "$VER: "BINNAME" 0.4.1 (23.11.2026) AmigaOS 3.x/MiniGL port, based on the MorphOS port by Mark Olsen";
 
 /* Picked up by libnix's swapstack.o, which the Makefile links in. The
    game recurses deeply (BSP traversal, bot AI, script parsing). */

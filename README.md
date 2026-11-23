@@ -48,6 +48,30 @@ Tested on AmigaOS 3.2, PiStorm with Raspberry Pi 4 (Emu68), PiStorm3D
 
 ## Changes
 
+**0.4.1**
+
+- Fixed: after a few minutes of play the player froze while the world went
+  on (enemies kept moving and shooting), keyboard and mouse stopped
+  answering and, with sound on, the last bit of sound looped. The game's
+  task priority was raised to 20 and stayed there, starving every task
+  below it (input commodities, the HDMI sound driver, the network). After
+  each frame the priority is now put back and MiniGL's display lock
+  released.
+- Faster in open areas (`dam`, 1024x768: 24.9 → 27.2 fps with all dynamic
+  lights): dynamic lights skip the vertexes they cannot reach, and the
+  sound is mixed at 22 kHz (RTCW's sounds are 22 kHz) instead of the HDMI
+  driver's 48 kHz.
+- **Dynamic lights: only the ones the game forces** (lightning and the
+  like) by default, `r_dynamiclight 2`: 30.5 fps there. Torches, fire and
+  muzzle flashes no longer light the walls around them. To get all of them
+  back: `/r_dynamiclight 1` in the console (it is saved).
+- GL_ADD (`r_ext_texture_env_add`) is on: glowing stages are drawn in one
+  pass with the texture below. PiStorm3D's library multiplies there
+  (`sp/amigaos/tests/gladdtest.c`), but nothing wrong was seen in play;
+  `r_ext_texture_env_add 0` turns it off.
+- Mouse movement no longer goes through the 32-entry input event ring,
+  which could overflow and drop button releases.
+
 **0.4**
 
 - Tested on hardware with `minigl.library` 29.3 and 30.0.
@@ -335,6 +359,15 @@ yaratabileceğine inanıyorum.
 Durum (minigl.library 30.0, ilk bölüm, dururken): 640x480'de 47 FPS,
 800x600'de 42, 1024x768'de (varsayılan) 36, 1280x720'de 33, 1920x1080'de 19. Hareket ve çatışmada daha
 düşük; `r_vertexlight 1` yaklaşık 10 FPS daha kazandırır.
+
+0.4.1 sürümündeki yenilikler: birkaç dakika oynayınca karakterin donması
+(dünya devam ederken klavye ve fare tepki vermiyordu, ses takılıyordu)
+düzeltildi: oyunun görev önceliği 20'de kalıp diğer her şeyi aç bırakıyordu.
+Açık alanlarda daha hızlı (dinamik ışıklar ve 22 kHz ses karıştırma). Dinamik
+ışıklar varsayılan olarak yalnız oyunun zorunlu tuttukları
+(`r_dynamiclight 2`, açık alanda ~3 FPS daha); meşale, ateş ve namlu
+alevinin çevreyi aydınlatması için konsolda `/r_dynamiclight 1` (kaydedilir).
+GL_ADD açık (`r_ext_texture_env_add 0` kapatır).
 
 0.4 sürümündeki yenilikler: donanımda (minigl 29.3 ve 30.0) denendi;
 640x480'de yaklaşık 41 → 47 FPS (yeni derleyici ve FPU kodu, Emu68 saati,

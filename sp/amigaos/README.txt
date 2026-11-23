@@ -55,8 +55,14 @@ Notes
 
 Useful settings (on the command line as +set name value, or in the
 console):
+  r_dynamiclight 2   dynamic lights: only the ones the game forces (the
+                     default on AmigaOS, about 3 fps faster in open
+                     areas). r_dynamiclight 1 lights the walls around
+                     torches, fire and muzzle flashes again; 0 turns all off
   r_vertexlight 1    no lightmaps: about 10 fps faster, flatter lighting
-  r_picmip 0         full size textures (the default on AmigaOS); 1 halves
+  r_ext_texture_env_add 1   GL_ADD for glowing stages (the default); set it
+                     to 0 if glows darken the wall around them
+  r_picmip 0        full size textures (the default on AmigaOS); 1 halves
                      them: saves memory, no faster on PiStorm3D
   com_soundMegs 96   sound memory in MB (the default on AmigaOS; less made
                      fights stutter). On machines with little Fast RAM start
